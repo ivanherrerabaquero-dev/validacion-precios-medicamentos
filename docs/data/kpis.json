@@ -1,0 +1,20 @@
+{
+ "fecha_corte": "2026-11-20",
+ "compradores": 3,
+ "lineas": 77,
+ "pct_aprobacion": 71.4,
+ "sobre_pmv": 6,
+ "bajo_piso": 5,
+ "excedente_mes": 25061208.0,
+ "valor_oferta_mes": 3339987427.0,
+ "pqr": {
+  "total": 420,
+  "abiertas": 43,
+  "vencidas_abiertas": 6,
+  "pct_oportunidad": 85.9,
+  "promedio_dias": 9.6,
+  "pct_internos": 65.0
+ },
+ "empresa": "CRM TECNOLOGÍAS EN SALUD",
+ "nota": "PMV, CUM y medicamentos reales (Circular 022 de 2026, CNPMDM). Empresa, compradores, tarifas, cantidades y PQR ficticios."
+}
