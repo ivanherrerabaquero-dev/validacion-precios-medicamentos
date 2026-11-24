@@ -21,7 +21,7 @@ Los compradores institucionales (grande, mediano y pequeño) envían sus bases d
 | Función | Entregable |
 |---|---|
 | Consolidación de datos | Paso 3 del notebook |
-| Generación de informes ejecutivos | Excel con formato + portal web |
+| Generación de informes ejecutivos | Excel con formato, informe ejecutivo HTML y portal web |
 | Recepción de PQR | Paso 5: base de PQR con días hábiles y oportunidad |
 | Generación de documentos gerenciales | Memorando en Word generado automáticamente |
 | Atención a usuarios internos de licitaciones y convenios | Segmentación de PQR por solicitante |
@@ -76,9 +76,9 @@ Ej.: IRBESARTÁN 150 mg x 25 tabletas: tarifa $20.143 vs PMV $17.250  →  +16,8
 ├── data/
 │   ├── entrada/       Bases de los compradores (Excel simulados)
 │   ├── referencia/    Tabla oficial de PMV (Circular 022 de 2026, CSV) y catálogo de la empresa
-│   └── salida/        Consolidado validado en Excel
+│   └── salida/        Consolidado validado en Excel e informe ejecutivo HTML
 ├── reportes/          Memorando gerencial (Word) y gráficos
-└── docs/              Portal web (GitHub Pages) + datos JSON + descargas
+└── docs/              Portal web (GitHub Pages), informe_ejecutivo.html, datos JSON y descargas
 ```
 
 ## Cómo ejecutarlo
