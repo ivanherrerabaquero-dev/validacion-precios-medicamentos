@@ -3,227 +3,499 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Validación de Precios y PQR</title>
-<meta name="description" content="Portal de seguimiento: validación de ofertas de medicamentos frente al PMV de la Circular 022 de 2026 y gestión de PQR de licitaciones y convenios. PMV reales de la Circular 022 de 2026; empresa, compradores y PQR ficticios.">
+<title>Precios y PQRS CRM</title>
+<meta name="description" content="Dashboard de CRM Tecnologías en Salud (ficticia): validación de ofertas frente al PMV de la Circular 022 de 2026, seguimiento de PQRS, metas regulatorias y casos reales del mercado anonimizados.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#f5f6f4; --surface:#ffffff; --ink:#1b2230; --muted:#5d6675; --line:#dfe3e8;
-  --brand:#1f4e79; --brand-soft:#e3ecf5; --ok:#2f7d4f; --warn:#b86b12; --bad:#b4372f;
-  --ok-soft:#e2f2e8; --warn-soft:#fbefdc; --bad-soft:#f8e1df;
+  --bg:#f4f5f2; --surface:#fff; --ink:#1b2230; --muted:#5d6675; --line:#dfe3e8;
+  --brand:#1f4e79; --brand-soft:#e3ecf5; --accent:#d9822b;
+  --ok:#2f7d4f; --warn:#b86b12; --bad:#b4372f; --ok-soft:#e2f2e8; --warn-soft:#fbefdc; --bad-soft:#f8e1df;
+  --c1:#1f4e79; --c2:#d9822b; --c3:#4f8a8b; --c4:#8a6fb0; --c5:#b4372f; --c6:#8a8f98;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#11161d; --surface:#18202a; --ink:#e7ebf0; --muted:#9aa4b2; --line:#2a3542;
-    --brand:#7fb0de; --brand-soft:#1e3044; --ok:#6fcf97; --warn:#f2b356; --bad:#f08a80;
-    --ok-soft:#183326; --warn-soft:#3a2c15; --bad-soft:#3d1f1d;
-  }
-}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#10151c; --surface:#18202a; --ink:#e7ebf0; --muted:#9aa4b2; --line:#2a3542;
+  --brand:#7fb0de; --brand-soft:#1e3044; --accent:#f2b356;
+  --ok:#6fcf97; --warn:#f2b356; --bad:#f08a80; --ok-soft:#183326; --warn-soft:#3a2c15; --bad-soft:#3d1f1d;
+  --c1:#7fb0de; --c2:#f2b356; --c3:#7cc4c5; --c4:#b9a2dd; --c5:#f08a80; --c6:#9aa4b2; } }
 :root[data-theme="dark"]{
-  --bg:#11161d; --surface:#18202a; --ink:#e7ebf0; --muted:#9aa4b2; --line:#2a3542;
-  --brand:#7fb0de; --brand-soft:#1e3044; --ok:#6fcf97; --warn:#f2b356; --bad:#f08a80;
-  --ok-soft:#183326; --warn-soft:#3a2c15; --bad-soft:#3d1f1d;
-}
+  --bg:#10151c; --surface:#18202a; --ink:#e7ebf0; --muted:#9aa4b2; --line:#2a3542;
+  --brand:#7fb0de; --brand-soft:#1e3044; --accent:#f2b356;
+  --ok:#6fcf97; --warn:#f2b356; --bad:#f08a80; --ok-soft:#183326; --warn-soft:#3a2c15; --bad-soft:#3d1f1d;
+  --c1:#7fb0de; --c2:#f2b356; --c3:#7cc4c5; --c4:#b9a2dd; --c5:#f08a80; --c6:#9aa4b2; }
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif}
-.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 56px}
-header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:18px}
-h1{font-size:clamp(22px,3.2vw,30px);line-height:1.15;margin:0 0 6px;font-weight:600;letter-spacing:-.01em}
-.sub{color:var(--muted);margin:0;max-width:640px}
-.tag{display:inline-block;font:500 12px "IBM Plex Mono",monospace;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:4px;margin-bottom:10px}
-.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-select,button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:1240px;margin:0 auto;padding:22px 16px 56px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between}
+h1{font-size:clamp(21px,3vw,28px);line-height:1.15;margin:4px 0;font-weight:600;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0;max-width:700px}
+.tag{display:inline-block;font:500 11.5px "IBM Plex Mono",monospace;color:var(--warn);background:var(--warn-soft);padding:3px 8px;border-radius:4px}
+button,select,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
 button{cursor:pointer}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:22px 0}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
-.kpi .l{color:var(--muted);font-size:13px}
-.kpi .v{font:600 clamp(18px,1.9vw,24px) "IBM Plex Mono",monospace;overflow-wrap:anywhere;margin-top:4px;font-variant-numeric:tabular-nums}
-.kpi.bad .v{color:var(--bad)} .kpi.ok .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)}
-h2{font-size:18px;margin:34px 0 4px;font-weight:600}
-.lead{color:var(--muted);margin:0 0 14px;font-size:14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
-.card h3{margin:0 0 10px;font-size:14px;font-weight:600}
-.chart{position:relative;height:300px}
-.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-th{position:sticky;top:0;background:var(--brand-soft);font-weight:600}
-td.num{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
-.pill{font-size:12px;padding:2px 8px;border-radius:10px;font-weight:500}
-.p-RECHAZADA{background:var(--bad-soft);color:var(--bad)}
-.p-APROBADA{background:var(--ok-soft);color:var(--ok)}
-.p-OBS{background:var(--warn-soft);color:var(--warn)}
-.wrapcell{white-space:normal;min-width:220px}
-.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-.links a{color:var(--brand);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:8px 12px;border-radius:6px;font-size:14px}
-.links a:hover{border-color:var(--brand)}
-ul.func{margin:8px 0 0;padding-left:18px;color:var(--muted)} ul.func b{color:var(--ink)}
-footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:18px 0 0;scrollbar-width:thin}
+nav.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:none;padding:10px 12px;white-space:nowrap;color:var(--muted);font-weight:500}
+nav.tabs button[aria-selected="true"]{color:var(--brand);border-bottom-color:var(--brand)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;margin:14px 0;position:sticky;top:0;z-index:5}
+.filters label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.filters select{min-width:140px;max-width:220px;padding:6px 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.chip{font-size:12px;background:var(--brand-soft);color:var(--brand);padding:3px 8px;border-radius:12px}
+section[role="tabpanel"]{display:none} section[role="tabpanel"].on{display:block}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi .l{color:var(--muted);font-size:12.5px}
+.kpi .v{font:600 clamp(18px,2vw,23px) "IBM Plex Mono",monospace;margin-top:2px;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:var(--muted)}
+.kpi.ok .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)} .kpi.bad .v{color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px}
+.grid.three{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;min-width:0}
+.card h3{margin:0 0 2px;font-size:14px;font-weight:600}
+.card .hint{margin:0 0 8px;font-size:12px;color:var(--muted)}
+.chart{position:relative;height:280px}
+.chart.tall{height:400px}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.split>div{min-width:0}
+td.nw{white-space:nowrap}
+h2{font-size:17px;margin:24px 0 6px;font-weight:600}
+.lead{color:var(--muted);margin:0 0 12px;font-size:13.5px;max-width:860px}
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;margin-bottom:14px}
+.insight{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--brand);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.tablebar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.tablebar input{flex:1;min-width:200px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface);max-height:520px}
+table{border-collapse:collapse;width:100%;font-size:12.8px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--brand-soft);font-weight:600;white-space:nowrap;cursor:pointer}
+td.num{text-align:right;font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+td.wide{min-width:260px}
+.pill{font-size:11.5px;padding:2px 8px;border-radius:10px;font-weight:500;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-bad{background:var(--bad-soft);color:var(--bad)}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:8px;font-size:13px;color:var(--muted)}
+.heat td{text-align:center;font-family:"IBM Plex Mono",monospace;min-width:52px}
+.heat th:first-child,.heat td:first-child{text-align:left;font-family:inherit;white-space:nowrap}
+.metas{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.meta{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--line);border-radius:8px;padding:14px}
+.meta.Verde{border-left-color:var(--ok)} .meta.Amarillo{border-left-color:var(--warn)} .meta.Rojo{border-left-color:var(--bad)}
+.meta .r{font:600 26px "IBM Plex Mono",monospace} .meta.Verde .r{color:var(--ok)} .meta.Amarillo .r{color:var(--warn)} .meta.Rojo .r{color:var(--bad)}
+.bar{height:8px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0;position:relative}
+.bar i{display:block;height:100%;background:var(--brand)}
+.bar b{position:absolute;top:-3px;width:2px;height:14px;background:var(--ink)}
+.meta small,.caso small{color:var(--muted)}
+.casos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.caso{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.caso h4{margin:0;font-size:14.5px} .caso p{margin:0;font-size:13.5px} .caso .med{color:var(--muted)} .caso .lec{color:var(--brand)}
+.caso .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:6px;flex-wrap:wrap}
+.caso a{color:var(--brand);font-size:13px}
+.links{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.links a{color:var(--brand);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:8px 12px;border-radius:6px}
+footer{margin-top:36px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
 .err{background:var(--bad-soft);color:var(--bad);padding:12px;border-radius:6px;display:none}
+@media (max-width:640px){ .grid,.grid.three,.split{grid-template-columns:minmax(0,1fr)} .chart.tall{height:340px} .filters{position:static} .filters select{min-width:0;width:100%} .filters label{flex:1 1 45%} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <span class="tag">PMV REALES · EMPRESA, COMPRADORES Y PQR FICTICIOS</span>
-      <h1>Validación de precios de medicamentos y PQR</h1>
-      <p class="sub" style="margin-bottom:6px"><b>CRM TECNOLOGÍAS EN SALUD</b> · gestor farmacéutico (empresa ficticia)</p>
-      <p class="sub">Ofertas de compradores en licitaciones y convenios, validadas frente al precio máximo de venta institucional de la Circular 022 de 2026 de la CNPMDM, y seguimiento de PQR de usuarios internos y compradores. Corte: <b id="corte">–</b>.</p>
-    </div>
-    <div class="controls">
-      <label for="f">Comprador</label>
-      <select id="f"><option value="">Todos</option></select>
-      <button id="tema" type="button" aria-label="Cambiar tema">◐ Tema</button>
-    </div>
-  </header>
-  <p class="err" id="err">No se pudieron cargar los datos. Si abriste el archivo directamente, publícalo en GitHub Pages o usa un servidor local.</p>
+<header>
+  <div>
+    <span class="tag">PMV REALES · EMPRESA, COMPRADORES Y PQRS FICTICIOS · CASOS DEL MERCADO ANONIMIZADOS</span>
+    <h1>Validación de precios y seguimiento de PQRS</h1>
+    <p class="sub"><b>CRM TECNOLOGÍAS EN SALUD</b> · gestor farmacéutico (empresa ficticia) · Corte <b id="corte">–</b> · Precios máximos de la Circular 022 de 2026 (CNPMDM)</p>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a class="chip" style="text-decoration:none;padding:8px 10px" href="informe_ejecutivo.html">Informe ejecutivo</a>
+    <button id="tema" type="button">◐ Tema</button>
+  </div>
+</header>
+<p class="err" id="err">No se pudieron cargar los datos. Publica la carpeta docs en GitHub Pages o ábrela con un servidor local.</p>
 
-  <section class="kpis" id="kpis"></section>
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+  <button role="tab" data-tab="precios" aria-selected="false">Validación de precios</button>
+  <button role="tab" data-tab="pqrs" aria-selected="false">Seguimiento PQRS</button>
+  <button role="tab" data-tab="metas" aria-selected="false">Metas regulatorias</button>
+  <button role="tab" data-tab="mercado" aria-selected="false">Casos del mercado</button>
+  <button role="tab" data-tab="datos" aria-selected="false">Calidad de datos</button>
+</nav>
 
-  <h2>Validación de ofertas</h2>
-  <p class="lead">Cada línea se cruza por CUM con la tabla oficial de la Circular 022 y la tarifa de la presentación comercial se compara con su precio máximo institucional y con el precio piso interno.</p>
+<div class="filters" id="filters">
+  <label>Comprador<select id="fComprador"></select></label>
+  <label>Canal<select id="fCanal"></select></label>
+  <label>Ciudad<select id="fCiudad"></select></label>
+  <label>Categoría<select id="fCategoria"></select></label>
+  <label>Severidad<select id="fSeveridad"></select></label>
+  <label>Estado<select id="fEstado"></select></label>
+  <label>Mes<select id="fMes"></select></label>
+  <button id="limpiar" type="button">Limpiar filtros</button>
+  <div class="chips" id="chips"></div>
+</div>
+
+<!-- RESUMEN -->
+<section role="tabpanel" id="resumen" class="on">
+  <div class="kpis" id="kResumen"></div>
+  <div class="insights" id="insights"></div>
   <div class="grid">
-    <div class="card"><h3>Estado de las líneas por comprador</h3><div class="chart"><canvas id="cEstado"></canvas></div></div>
+    <div class="card"><h3>PQRS por mes y canal</h3><p class="hint">Clic en una barra para filtrar por mes.</p><div class="chart"><canvas id="cMesCanal"></canvas></div></div>
+    <div class="card"><h3>Estado de las líneas ofertadas por comprador</h3><p class="hint">Validación contra el PMV institucional y el precio piso.</p><div class="chart"><canvas id="cEstadoRes"></canvas></div></div>
+  </div>
+</section>
+
+<!-- PRECIOS -->
+<section role="tabpanel" id="precios">
+  <p class="lead">Cada línea de las ofertas se cruza por CUM con la tabla oficial de la Circular 022 de 2026. Si la tarifa supera el precio máximo institucional, se rechaza; si queda bajo el precio piso interno, se marca riesgo de margen. Este tablero responde al filtro de comprador.</p>
+  <div class="kpis" id="kPrecios"></div>
+  <div class="grid">
+    <div class="card"><h3>Estado por comprador</h3><div class="chart"><canvas id="cEstado"></canvas></div></div>
     <div class="card"><h3>Hallazgos por tipo</h3><div class="chart"><canvas id="cHall"></canvas></div></div>
   </div>
-
-  <h2>Líneas con hallazgos</h2>
-  <p class="lead">Ordenadas por excedente mensual estimado sobre el PMV.</p>
-  <div class="tablewrap" style="max-height:420px"><table id="tLineas"></table></div>
-
-  <h2>Gestión de PQR</h2>
-  <p class="lead">Término de respuesta: 15 días hábiles (Ley 1755 de 2015), descontando fines de semana y festivos de Colombia.</p>
-  <div class="grid">
-    <div class="card"><h3>PQR por motivo</h3><div class="chart" style="height:360px"><canvas id="cMotivo"></canvas></div></div>
-    <div class="card"><h3>Oportunidad de respuesta por mes (%)</h3><div class="chart" style="height:360px"><canvas id="cOpor"></canvas></div></div>
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h3>Tarifa ofertada frente al PMV</h3><p class="hint">Cada punto es una línea. Sobre 100 % la tarifa supera el precio máximo.</p><div class="chart"><canvas id="cRatio"></canvas></div></div>
+    <div class="card"><h3>Valor ofertado mensual por comprador</h3><div class="chart"><canvas id="cValor"></canvas></div></div>
   </div>
-  <h2>PQR abiertas</h2>
-  <p class="lead">Las que superan el término aparecen primero.</p>
-  <div class="tablewrap" style="max-height:360px"><table id="tPqr"></table></div>
+  <h2>Detalle de líneas</h2>
+  <div class="tablebar"><input id="qLineas" placeholder="Buscar por CUM, medicamento o hallazgo…"><select id="eLineas"><option value="">Todos los estados</option><option>RECHAZADA</option><option>CON OBSERVACIONES</option><option>APROBADA</option></select></div>
+  <div class="tablewrap"><table id="tLineas"></table></div>
+  <div class="pager" id="pLineas"></div>
+</section>
 
-  <h2>Descargas y código</h2>
+<!-- PQRS -->
+<section role="tabpanel" id="pqrs">
+  <p class="lead">Seguimiento de 440 PQRS del semestre en dos canales: B2B (convenios, licitaciones y usuarios internos) y dispensación a pacientes. Término legal: 15 días hábiles (Ley 1755 de 2015); pendientes: 48 horas (Resolución 1604 de 2013); acuerdo de servicio interno por severidad.</p>
+  <div class="kpis" id="kPqrs"></div>
+  <div class="grid">
+    <div class="card"><h3>Tendencia mensual por canal</h3><div class="chart"><canvas id="cTend"></canvas></div></div>
+    <div class="card"><h3>Oportunidad de respuesta por mes</h3><div class="chart"><canvas id="cOpor"></canvas></div></div>
+  </div>
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h3>PQRS por categoría</h3><p class="hint">Clic en una barra para filtrar por categoría.</p><div class="chart tall"><canvas id="cCat"></canvas></div></div>
+    <div class="card"><h3>Severidad y ente relacionado</h3><p class="hint">Clic en la dona para filtrar por severidad.</p><div class="split"><div class="chart tall"><canvas id="cSev"></canvas></div><div class="chart tall"><canvas id="cEnte"></canvas></div></div></div>
+  </div>
+  <div class="grid three" style="margin-top:12px">
+    <div class="card"><h3>Envejecimiento de casos abiertos</h3><div class="chart"><canvas id="cAging"></canvas></div></div>
+    <div class="card"><h3>Medicamentos con más PQRS</h3><div class="chart"><canvas id="cMed"></canvas></div></div>
+    <div class="card"><h3>Medio de recepción</h3><div class="chart"><canvas id="cMedio"></canvas></div></div>
+  </div>
+  <h2>Mapa de calor: ciudad × categoría</h2>
+  <p class="lead">Número de PQRS. Clic en una celda para filtrar.</p>
+  <div class="tablewrap"><table class="heat" id="tHeat"></table></div>
+  <h2>Detalle de casos</h2>
+  <div class="tablebar"><input id="qPqr" placeholder="Buscar por radicado, descripción, medicamento, punto…"><label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="soloVencidas"> Solo fuera de término</label></div>
+  <div class="tablewrap"><table id="tPqr"></table></div>
+  <div class="pager" id="pPqr"></div>
+</section>
+
+<!-- METAS -->
+<section role="tabpanel" id="metas">
+  <p class="lead">Indicadores que vigilan los entes de control y las metas internas. Verde: cumple; amarillo: a menos de 10 puntos de la meta; rojo: incumple. Se calculan con todo el periodo (no responden a los filtros).</p>
+  <div class="metas" id="gMetas"></div>
+</section>
+
+<!-- MERCADO -->
+<section role="tabpanel" id="mercado">
+  <p class="lead">Casos públicos de vigilancia a distribuidores y gestores farmacéuticos en Colombia, presentados <b>sin nombres de empresas</b>. Cada caso se relaciona con la categoría equivalente de PQRS de CRM para dimensionar el riesgo propio.</p>
+  <div class="tablebar"><select id="fEnteCaso"><option value="">Todos los entes</option></select></div>
+  <div class="casos" id="gCasos"></div>
+</section>
+
+<!-- DATOS -->
+<section role="tabpanel" id="datos">
+  <p class="lead">Reporte de la lectura inteligente: qué archivo se leyó, en qué hoja y fila estaba el encabezado, cómo se reconoció cada columna (aunque tenga otro nombre) y qué faltó.</p>
+  <div class="tablewrap"><table id="tLectura"></table></div>
   <div class="links">
-    <a href="informe_ejecutivo.html">Informe ejecutivo (HTML)</a>
     <a href="descargas/consolidado_validacion.xlsx">Consolidado en Excel</a>
     <a href="descargas/memorando_gerencial.docx">Memorando gerencial (Word)</a>
-    <a href="https://colab.research.google.com/github/ivanherrerabaquero-dev/validacion-precios-medicamentos/blob/main/notebooks/proyecto_validacion_precios.ipynb">Abrir el notebook en Colab</a>
-    <a href="https://github.com/ivanherrerabaquero-dev/validacion-precios-medicamentos">Repositorio en GitHub</a>
+    <a href="informe_ejecutivo.html">Informe ejecutivo (HTML)</a>
+    <a href="https://colab.research.google.com/github/ivanherrerabaquero-dev/validacion-precios-medicamentos/blob/main/notebooks/proyecto_validacion_precios.ipynb">Notebook en Colab</a>
+    <a href="https://github.com/ivanherrerabaquero-dev/validacion-precios-medicamentos">Repositorio</a>
   </div>
-  <ul class="func">
-    <li><b>Consolidación de datos:</b> tres bases de compradores con formatos distintos se unen en una sola y se cruzan con 38.999 presentaciones de la Circular 022.</li>
-    <li><b>Informes ejecutivos:</b> este portal y el libro de Excel con formato.</li>
-    <li><b>Documentos gerenciales:</b> memorando con cifras y recomendaciones generado automáticamente.</li>
-    <li><b>Recepción de PQR y atención a usuarios internos</b> de licitaciones y convenios, con control de términos.</li>
-  </ul>
+</section>
 
-  <footer>Ivan Santiago Herrera Baquero · Precios máximos, CUM y medicamentos: tabla pública de la Circular 022 de 2026 (CNPMDM). CRM Tecnologías en Salud, compradores, tarifas ofertadas, cantidades y PQR son ficticios.</footer>
+<footer>Ivan Santiago Herrera Baquero · Precios máximos, CUM y medicamentos: tabla pública de la Circular 022 de 2026 (CNPMDM). CRM Tecnologías en Salud, compradores, tarifas, puntos de dispensación y PQRS son ficticios. Los casos del mercado son públicos y se muestran sin nombres de empresas.</footer>
 </div>
 
 <script>
 const $ = s => document.querySelector(s);
-const fmt = n => new Intl.NumberFormat("es-CO").format(Math.round(n));
+const fmt = n => new Intl.NumberFormat("es-CO").format(Math.round(n || 0));
+const pct = n => (Math.round(n * 10) / 10).toLocaleString("es-CO") + " %";
+const millones = n => "$" + (n / 1e6).toLocaleString("es-CO", {maximumFractionDigits: 1}) + " M";
 const pesos = n => "$" + fmt(n);
-let D = {}, charts = {};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const PAL = () => ["--c1","--c2","--c3","--c4","--c5","--c6"].map(css);
+let D = {}, charts = {}, tab = "resumen";
+const F = {Comprador:"", Canal:"", Ciudad:"", Categoria:"", Severidad:"", Estado:"", Mes:""};
+const page = {lineas:0, pqr:0};
+const corto = c => c.replace("RED HOSPITALARIA ", "").replace("CLÍNICA INTEGRAL ", "").replace(" IPS", "");
 
-function wrapL(t, n=17){ const w=t.split(' '), out=['']; w.forEach(x=>{ if((out[out.length-1]+' '+x).trim().length>n) out.push(x); else out[out.length-1]=(out[out.length-1]+' '+x).trim(); }); return out; }
-function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
-
+// ---------- tema
 (function(){
   try { const t = localStorage.getItem("tema"); if (t) document.documentElement.dataset.theme = t; } catch(e){}
   $("#tema").onclick = () => {
-    const dark = document.documentElement.dataset.theme
-      ? document.documentElement.dataset.theme === "dark"
-      : matchMedia("(prefers-color-scheme: dark)").matches;
-    const t = dark ? "light" : "dark";
-    document.documentElement.dataset.theme = t;
-    try { localStorage.setItem("tema", t); } catch(e){}
+    const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("tema", document.documentElement.dataset.theme); } catch(e){}
     render();
   };
 })();
 
-document.fonts.ready.then(() => Promise.all(["kpis","lineas","pqr"].map(n => fetch("data/" + n + ".json").then(r => { if(!r.ok) throw r; return r.json(); })))
-  .then(([k, l, p]) => {
-    D = {k, l, p};
+// ---------- pestañas
+document.querySelectorAll("nav.tabs button").forEach(b => b.onclick = () => abrir(b.dataset.tab));
+function abrir(t){
+  tab = t;
+  document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  document.querySelectorAll("section[role=tabpanel]").forEach(s => s.classList.toggle("on", s.id === t));
+  try { localStorage.setItem("pestana", t); } catch(e){}
+  render();
+}
+
+// ---------- datos
+document.fonts.ready.then(() => Promise.all(["kpis","lineas","pqr","metas","casos","lectura"].map(n =>
+  fetch("data/" + n + ".json").then(r => { if (!r.ok) throw r; return r.json(); }))))
+  .then(([k, l, p, m, c, le]) => {
+    D = {k, l, p, m, c, le};
     $("#corte").textContent = k.fecha_corte;
-    [...new Set(l.map(x => x.COMPRADOR))].sort().forEach(c => $("#f").add(new Option(c, c)));
-    $("#f").onchange = render;
-    render();
+    const opts = (id, vals) => { const s = $(id); s.innerHTML = '<option value="">Todos</option>' + vals.map(v => `<option>${esc(v)}</option>`).join(""); };
+    const uniq = (arr, key) => [...new Set(arr.map(x => x[key]).filter(x => x && x !== "—"))].sort();
+    opts("#fComprador", uniq(l, "COMPRADOR"));
+    opts("#fCanal", uniq(p, "CANAL"));
+    opts("#fCiudad", uniq(p, "CIUDAD"));
+    opts("#fCategoria", uniq(p, "CATEGORIA"));
+    $("#fSeveridad").innerHTML = '<option value="">Todas</option>' + ["Crítica","Alta","Media","Baja"].map(v => `<option>${v}</option>`).join("");
+    opts("#fEstado", uniq(p, "ESTADO"));
+    opts("#fMes", uniq(p, "MES"));
+    Object.keys(F).forEach(k => $("#f" + k).onchange = e => { F[k] = e.target.value; page.lineas = page.pqr = 0; render(); });
+    $("#limpiar").onclick = () => { Object.keys(F).forEach(k => { F[k] = ""; $("#f" + k).value = ""; }); render(); };
+    [...new Set(c.map(x => x.ENTE))].forEach(e => $("#fEnteCaso").add(new Option(e, e)));
+    $("#fEnteCaso").onchange = render;
+    $("#qLineas").oninput = $("#eLineas").onchange = () => { page.lineas = 0; render(); };
+    $("#qPqr").oninput = $("#soloVencidas").onchange = () => { page.pqr = 0; render(); };
+    let t0 = "resumen"; try { t0 = localStorage.getItem("pestana") || t0; } catch(e){}
+    abrir(t0);
   })
-  .catch(() => { $("#err").style.display = "block"; }));
+  .catch(e => { console.error(e); $("#err").style.display = "block"; });
+
+function setF(k, v){ F[k] = F[k] === v ? "" : v; $("#f" + k).value = F[k]; page.pqr = 0; render(); }
+
+function filtrarPqr(){
+  return D.p.filter(x => (!F.Comprador || x.COMPRADOR === F.Comprador) && (!F.Canal || x.CANAL === F.Canal)
+    && (!F.Ciudad || x.CIUDAD === F.Ciudad) && (!F.Categoria || x.CATEGORIA === F.Categoria)
+    && (!F.Severidad || x.SEVERIDAD === F.Severidad) && (!F.Estado || x.ESTADO === F.Estado) && (!F.Mes || x.MES === F.Mes));
+}
+const filtrarLineas = () => D.l.filter(x => !F.Comprador || x.COMPRADOR === F.Comprador);
 
 function chart(id, cfg){
   if (charts[id]) charts[id].destroy();
-  Chart.defaults.color = css("--muted"); Chart.defaults.borderColor = css("--line");
-  Chart.defaults.font.family = "IBM Plex Sans";
+  Chart.defaults.color = css("--muted"); Chart.defaults.borderColor = css("--line"); Chart.defaults.font.family = "IBM Plex Sans";
+  cfg.options = Object.assign({maintainAspectRatio:false, responsive:true}, cfg.options || {});
   charts[id] = new Chart(document.getElementById(id), cfg);
+}
+const wrapL = (t, n=22) => { const out = [""]; String(t).split(" ").forEach(w => { if ((out.at(-1) + " " + w).trim().length > n) out.push(w); else out[out.length-1] = (out.at(-1) + " " + w).trim(); }); return out; };
+const kpiHtml = arr => arr.map(([l, v, c, d]) => `<div class="kpi ${c||""}"><div class="l">${l}</div><div class="v">${v}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`).join("");
+const contar = (arr, key) => arr.reduce((a, x) => (a[x[key]] = (a[x[key]] || 0) + 1, a), {});
+const recortar = (t, n=26) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
+const hbar = (id, entries, color, onClickKey) => chart(id, {type:"bar",
+  data:{labels:entries.map(e => recortar(e[0])), datasets:[{data:entries.map(e => e[1]), backgroundColor:color, borderRadius:3}]},
+  options:{indexAxis:"y", layout:{padding:{left:8}}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => entries[c[0].dataIndex][0]}}}, scales:{y:{ticks:{autoSkip:false, font:{size:11.5}}}},
+    onClick: onClickKey ? (ev, el) => el.length && setF(onClickKey, entries[el[0].index][0]) : undefined}});
+
+function stats(P){
+  const cer = P.filter(x => x.ESTADO.startsWith("Cerrada"));
+  const prom = (a, k) => a.length ? a.reduce((s, x) => s + (x[k] || 0), 0) / a.length : 0;
+  return {cer, total:P.length, abiertas:P.length - cer.length, venc:P.filter(x => x.VENCIDA_ABIERTA).length,
+    opor: cer.length ? cer.filter(x => x.OPORTUNA_LEGAL === 1).length / cer.length * 100 : 0,
+    sla: cer.length ? cer.filter(x => x.CUMPLE_SLA === 1).length / cer.length * 100 : 0,
+    dias: prom(cer, "DIAS_HABILES"), sat: prom(cer.filter(x => x.SATISFACCION != null), "SATISFACCION"),
+    tutelas: P.filter(x => x.TUTELA).length, esc: P.filter(x => x.ESCALADO_ENTE).length,
+    reinc: P.length ? P.filter(x => x.REINCIDENTE).length / P.length * 100 : 0,
+    impacto: P.reduce((s, x) => s + (x.IMPACTO_COP || 0), 0)};
+}
+
+function chips(){
+  $("#chips").innerHTML = Object.entries(F).filter(([k, v]) => v).map(([k, v]) => `<span class="chip">${k}: ${esc(v)}</span>`).join("");
+  $("#filters").style.display = ["metas","mercado","datos"].includes(tab) ? "none" : "flex";
 }
 
 function render(){
-  if (!D.l) return;
-  const f = $("#f").value;
-  const L = D.l.filter(x => !f || x.COMPRADOR === f);
-  const P = D.p.filter(x => !f || x.COMPRADOR === f);
-  const cerr = P.filter(x => x.ESTADO === "Cerrada");
-  const opor = cerr.length ? cerr.filter(x => x.OPORTUNA).length / cerr.length * 100 : 0;
-  const venc = P.filter(x => x.VENCIDA_ABIERTA).length;
-  const sobre = L.filter(x => x.HALLAZGOS && x.HALLAZGOS.includes("Supera PMV")).length;
+  if (!D.p) return;
+  chips();
+  ({resumen:rResumen, precios:rPrecios, pqrs:rPqrs, metas:rMetas, mercado:rMercado, datos:rDatos})[tab]();
+}
+
+// ---------- RESUMEN
+function rResumen(){
+  const P = filtrarPqr(), L = filtrarLineas(), s = stats(P);
+  const sobre = L.filter(x => (x.HALLAZGOS || "").includes("Supera PMV"));
   const exc = L.reduce((a, x) => a + (x.EXCEDENTE_MES || 0), 0);
   const aprob = L.length ? L.filter(x => x.ESTADO === "APROBADA").length / L.length * 100 : 0;
-
-  const K = [
-    ["Líneas validadas", fmt(L.length), ""],
-    ["Aprobadas sin observación", aprob.toFixed(1) + " %", aprob >= 80 ? "ok" : "warn"],
-    ["Líneas sobre el PMV", fmt(sobre), sobre ? "bad" : "ok"],
-    ["Excedente estimado / mes", "$" + (exc/1e6).toFixed(1).replace(".", ",") + " M", exc ? "bad" : "ok"],
-    ["PQR recibidas", fmt(P.length), ""],
-    ["Oportunidad de respuesta", opor.toFixed(1) + " %", opor >= 90 ? "ok" : "warn"],
-    ["Abiertas fuera de término", fmt(venc), venc ? "bad" : "ok"],
-  ];
-  $("#kpis").innerHTML = K.map(([l, v, c]) => `<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("");
-
+  $("#kResumen").innerHTML = kpiHtml([
+    ["Líneas validadas", fmt(L.length), "", `${D.k.presentaciones_circular.toLocaleString("es-CO")} CUM en la circular`],
+    ["Aprobadas", pct(aprob), aprob >= 80 ? "ok" : "warn"],
+    ["Sobre el PMV", fmt(sobre.length), sobre.length ? "bad" : "ok", "excedente " + millones(exc) + "/mes"],
+    ["PQRS", fmt(s.total), "", `${fmt(s.abiertas)} abiertas`],
+    ["Oportunidad legal", pct(s.opor), s.opor >= 95 ? "ok" : "warn", "≤ 15 días hábiles"],
+    ["Acuerdo de servicio", pct(s.sla), s.sla >= 90 ? "ok" : s.sla >= 80 ? "warn" : "bad"],
+    ["Fuera de término", fmt(s.venc), s.venc ? "bad" : "ok"],
+    ["Satisfacción", s.sat.toFixed(2).replace(".", ",") + " / 5", s.sat >= 4 ? "ok" : "warn"],
+  ]);
+  // insights automáticos
+  const porMes = (cat) => { const m = {}; D.p.filter(x => x.CATEGORIA === cat).forEach(x => m[x.MES] = (m[x.MES] || 0) + 1); return m; };
+  const aj = porMes("Ajuste de precios Circular 022");
+  const antes = ["2026-06","2026-07"].reduce((a, k) => a + (aj[k] || 0), 0) / 2, despues = ["2026-09","2026-10"].reduce((a, k) => a + (aj[k] || 0), 0) / 2;
+  const topCat = Object.entries(contar(P, "CATEGORIA")).sort((a, b) => b[1] - a[1])[0];
+  const peorCiudad = Object.entries(contar(P.filter(x => x.VENCIDA_ABIERTA || x.CUMPLE_SLA === 0), "CIUDAD")).sort((a, b) => b[1] - a[1])[0];
+  const rojas = D.m.filter(x => x.SEMAFORO === "Rojo").length;
+  $("#insights").innerHTML = [
+    `Las solicitudes por <b>ajuste de precios</b> pasaron de ${antes.toFixed(0)} a ${despues.toFixed(0)} por mes tras la vigencia de la Circular 022 (19/08/2026).`,
+    topCat ? `La categoría con más PQRS en la selección es <b>${esc(topCat[0])}</b> (${topCat[1]} casos, ${pct(topCat[1] / P.length * 100)}).` : "",
+    peorCiudad ? `<b>${esc(peorCiudad[0])}</b> concentra más casos fuera del acuerdo de servicio o vencidos (${peorCiudad[1]}).` : "",
+    `${rojas} de ${D.m.length} metas regulatorias están en rojo; la más crítica es la entrega de pendientes en 48 horas.`,
+  ].filter(Boolean).map(t => `<div class="insight">${t}</div>`).join("");
+  // charts
+  const meses = [...new Set(D.p.map(x => x.MES))].sort(), canales = [...new Set(D.p.map(x => x.CANAL))].sort();
+  chart("cMesCanal", {type:"bar", data:{labels:meses, datasets:canales.map((c, i) => ({label:c, backgroundColor:PAL()[i],
+      data:meses.map(m => P.filter(x => x.MES === m && x.CANAL === c).length)}))},
+    options:{scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}}, onClick:(e, el) => el.length && setF("Mes", meses[el[0].index])}});
+  estadoChart("cEstadoRes", L);
+}
+function estadoChart(id, L){
   const comps = [...new Set(L.map(x => x.COMPRADOR))].sort();
-  const cnt = (c, e) => L.filter(x => x.COMPRADOR === c && x.ESTADO === e).length;
-  chart("cEstado", {type:"bar", data:{labels:comps.map(c => c.replace("COMPRADOR ", "")), datasets:[
-      {label:"Aprobada", data:comps.map(c => cnt(c, "APROBADA")), backgroundColor:css("--ok")},
-      {label:"Con observaciones", data:comps.map(c => cnt(c, "CON OBSERVACIONES")), backgroundColor:css("--warn")},
-      {label:"Rechazada", data:comps.map(c => cnt(c, "RECHAZADA")), backgroundColor:css("--bad")}]},
-    options:{indexAxis:"y", maintainAspectRatio:false, layout:{padding:{left:12}}, scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}}}});
+  const n = (c, e) => L.filter(x => x.COMPRADOR === c && x.ESTADO === e).length;
+  chart(id, {type:"bar", data:{labels:comps.map(corto), datasets:[
+      {label:"Aprobada", data:comps.map(c => n(c, "APROBADA")), backgroundColor:css("--ok")},
+      {label:"Con observaciones", data:comps.map(c => n(c, "CON OBSERVACIONES")), backgroundColor:css("--warn")},
+      {label:"Rechazada", data:comps.map(c => n(c, "RECHAZADA")), backgroundColor:css("--bad")}]},
+    options:{indexAxis:"y", scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}},
+      onClick:(e, el) => el.length && setF("Comprador", comps[el[0].index])}});
+}
 
-  const tipos = {};
-  L.forEach(x => (x.HALLAZGOS || "").split("; ").filter(Boolean).forEach(h => tipos[h] = (tipos[h] || 0) + 1));
-  const th = Object.entries(tipos).sort((a, b) => b[1] - a[1]);
-  chart("cHall", {type:"bar", data:{labels:th.map(t => wrapL(t[0])), datasets:[{data:th.map(t => t[1]), backgroundColor:css("--brand")}]},
-    options:{indexAxis:"y", maintainAspectRatio:false, layout:{padding:{left:12}}, scales:{y:{ticks:{autoSkip:false}}}, plugins:{legend:{display:false}}}});
-
-  const mot = {}; P.forEach(x => mot[x.MOTIVO] = (mot[x.MOTIVO] || 0) + 1);
-  const tm = Object.entries(mot).sort((a, b) => b[1] - a[1]);
-  chart("cMotivo", {type:"bar", data:{labels:tm.map(t => wrapL(t[0], 28)), datasets:[{data:tm.map(t => t[1]), backgroundColor:css("--brand")}]},
-    options:{indexAxis:"y", maintainAspectRatio:false, layout:{padding:{left:12}}, scales:{y:{ticks:{autoSkip:false}}}, plugins:{legend:{display:false}}}});
-
-  const meses = [...new Set(cerr.map(x => x.MES))].sort();
-  const om = meses.map(m => { const c = cerr.filter(x => x.MES === m); return +(c.filter(x => x.OPORTUNA).length / c.length * 100).toFixed(1); });
-  chart("cOpor", {type:"line", data:{labels:meses, datasets:[
-      {label:"Oportunidad", data:om, borderColor:css("--brand"), backgroundColor:css("--brand"), tension:.25},
-      {label:"Meta 90 %", data:meses.map(() => 90), borderColor:css("--warn"), borderDash:[5,4], pointRadius:0}]},
-    options:{maintainAspectRatio:false, scales:{y:{min:50, max:100}}, plugins:{legend:{position:"bottom"}}}});
-
-  const H = L.filter(x => x.ESTADO !== "APROBADA").sort((a, b) => (b.EXCEDENTE_MES || 0) - (a.EXCEDENTE_MES || 0));
-  const pill = e => `<span class="pill ${e === "CON OBSERVACIONES" ? "p-OBS" : "p-" + e}">${e}</span>`;
-  $("#tLineas").innerHTML = `<thead><tr><th>Comprador</th><th>CUM</th><th>Descripción</th><th>Tarifa</th><th>PMV institucional</th><th>% sobre PMV</th><th>Excedente/mes</th><th>Estado</th><th>Hallazgos</th></tr></thead><tbody>` +
-    H.map(x => `<tr><td>${x.COMPRADOR.replace("COMPRADOR ", "")}</td><td>${x.CUM}</td><td class="wrapcell">${x.DESCRIPCION}</td>
+// ---------- PRECIOS
+function rPrecios(){
+  const L = filtrarLineas();
+  const sobre = L.filter(x => (x.HALLAZGOS || "").includes("Supera PMV")), bajo = L.filter(x => (x.HALLAZGOS || "").includes("Bajo precio piso"));
+  const exc = L.reduce((a, x) => a + (x.EXCEDENTE_MES || 0), 0), val = L.reduce((a, x) => a + (x.VALOR_OFERTA_MES || 0), 0);
+  $("#kPrecios").innerHTML = kpiHtml([
+    ["Líneas", fmt(L.length)], ["Rechazadas", fmt(L.filter(x => x.ESTADO === "RECHAZADA").length), "bad"],
+    ["Con observaciones", fmt(L.filter(x => x.ESTADO === "CON OBSERVACIONES").length), "warn"],
+    ["Sobre el PMV", fmt(sobre.length), sobre.length ? "bad" : "ok"], ["Excedente / mes", millones(exc), exc ? "bad" : "ok"],
+    ["Bajo precio piso", fmt(bajo.length), bajo.length ? "warn" : "ok"], ["Valor ofertado / mes", millones(val)],
+  ]);
+  estadoChart("cEstado", L);
+  const tipos = {}; L.forEach(x => (x.HALLAZGOS || "").split("; ").filter(Boolean).forEach(h => tipos[h] = (tipos[h] || 0) + 1));
+  hbar("cHall", Object.entries(tipos).sort((a, b) => b[1] - a[1]), css("--c1"));
+  const comps = [...new Set(L.map(x => x.COMPRADOR))].sort();
+  chart("cRatio", {type:"scatter", data:{datasets:comps.map((c, i) => ({label:corto(c), backgroundColor:PAL()[i],
+      data:L.filter(x => x.COMPRADOR === c && x.PMV_INSTITUCIONAL && x.TARIFA).map(x => ({x:x.PMV_INSTITUCIONAL, y:x.TARIFA / x.PMV_INSTITUCIONAL * 100, t:x.DESCRIPCION}))}))},
+    options:{plugins:{legend:{position:"bottom"}, tooltip:{callbacks:{label:c => `${c.raw.t.slice(0, 40)}: ${c.raw.y.toFixed(1)} % del PMV`}},
+      annotation:{}}, scales:{x:{type:"logarithmic", title:{display:true, text:"PMV institucional (escala log)"}, ticks:{autoSkip:false, maxRotation:0, callback:v => ({1e3:"$1 mil",1e4:"$10 mil",1e5:"$100 mil",1e6:"$1 M",1e7:"$10 M",1e8:"$100 M"})[v] || ""}}, y:{title:{display:true, text:"Tarifa / PMV (%)"}, suggestedMin:50, suggestedMax:135}}}});
+  chart("cValor", {type:"bar", data:{labels:comps.map(corto), datasets:[{label:"Valor ofertado/mes", backgroundColor:css("--c1"),
+      data:comps.map(c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.VALOR_OFERTA_MES || 0), 0))},
+      {label:"Excedente sobre PMV", backgroundColor:css("--bad"), data:comps.map(c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.EXCEDENTE_MES || 0), 0))}]},
+    options:{plugins:{legend:{position:"bottom"}, tooltip:{callbacks:{label:c => `${c.dataset.label}: ${pesos(c.raw)}`}}}, scales:{y:{ticks:{callback:v => millones(v)}}}}});
+  // tabla
+  const q = $("#qLineas").value.toLowerCase(), e = $("#eLineas").value;
+  const rows = L.filter(x => (!e || x.ESTADO === e) && (!q || [x.CUM, x.DESCRIPCION, x.HALLAZGOS].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => (b.EXCEDENTE_MES || 0) - (a.EXCEDENTE_MES || 0) || (a.ESTADO > b.ESTADO ? 1 : -1));
+  const pill = s => `<span class="pill ${s === "APROBADA" ? "p-ok" : s === "RECHAZADA" ? "p-bad" : "p-warn"}">${s}</span>`;
+  tabla("#tLineas", "#pLineas", "lineas", rows, ["Comprador","CUM","Medicamento","Cantidad","Tarifa","PMV","% sobre","Excedente/mes","Estado","Hallazgos"],
+    x => `<td>${esc(corto(x.COMPRADOR))}</td><td>${esc(x.CUM)}</td><td class="wide">${esc(x.DESCRIPCION)}</td><td class="num">${fmt(x.CANTIDAD)}</td>
       <td class="num">${x.TARIFA != null ? pesos(x.TARIFA) : "–"}</td><td class="num">${x.PMV_INSTITUCIONAL != null ? pesos(x.PMV_INSTITUCIONAL) : "–"}</td>
-      <td class="num">${x.PCT_SOBRE_PMV ? x.PCT_SOBRE_PMV + " %" : "–"}</td><td class="num">${x.EXCEDENTE_MES ? pesos(x.EXCEDENTE_MES) : "–"}</td>
-      <td>${pill(x.ESTADO)}</td><td class="wrapcell">${x.HALLAZGOS}</td></tr>`).join("") + "</tbody>";
+      <td class="num">${x.PCT_SOBRE_PMV ? pct(x.PCT_SOBRE_PMV) : "–"}</td><td class="num">${x.EXCEDENTE_MES ? pesos(x.EXCEDENTE_MES) : "–"}</td>
+      <td>${pill(x.ESTADO)}</td><td class="wide">${esc(x.HALLAZGOS)}</td>`);
+}
 
-  const A = P.filter(x => x.ESTADO === "Abierta").sort((a, b) => b.DIAS_HABILES - a.DIAS_HABILES);
-  $("#tPqr").innerHTML = `<thead><tr><th>Radicado</th><th>Fecha</th><th>Solicitante</th><th>Comprador</th><th>Motivo</th><th>Prioridad</th><th>Días hábiles</th><th>Término</th></tr></thead><tbody>` +
-    A.map(x => `<tr><td>${x.RADICADO}</td><td>${x.FECHA_RADICACION}</td><td>${x.SOLICITANTE}</td><td>${x.COMPRADOR.replace("COMPRADOR ", "")}</td>
-      <td>${x.MOTIVO}</td><td>${x.PRIORIDAD}</td><td class="num">${x.DIAS_HABILES}</td>
-      <td>${x.VENCIDA_ABIERTA ? '<span class="pill p-RECHAZADA">Vencida</span>' : '<span class="pill p-APROBADA">En término</span>'}</td></tr>`).join("") + "</tbody>";
+// ---------- PQRS
+function rPqrs(){
+  const P = filtrarPqr(), s = stats(P);
+  $("#kPqrs").innerHTML = kpiHtml([
+    ["PQRS", fmt(s.total), "", `${fmt(s.abiertas)} abiertas`], ["Fuera de término", fmt(s.venc), s.venc ? "bad" : "ok"],
+    ["Oportunidad legal", pct(s.opor), s.opor >= 95 ? "ok" : "warn"], ["Acuerdo de servicio", pct(s.sla), s.sla >= 90 ? "ok" : s.sla >= 80 ? "warn" : "bad"],
+    ["Días hábiles promedio", s.dias.toFixed(1).replace(".", ",")], ["Tutelas", fmt(s.tutelas), s.tutelas ? "warn" : "ok"],
+    ["Escaladas a ente", fmt(s.esc), s.esc ? "warn" : "ok"], ["Reincidencia", pct(s.reinc), s.reinc <= 10 ? "ok" : "bad"],
+    ["Impacto económico", millones(s.impacto)], ["Satisfacción", s.sat.toFixed(2).replace(".", ",") + " / 5", s.sat >= 4 ? "ok" : "warn"],
+  ]);
+  const meses = [...new Set(D.p.map(x => x.MES))].sort(), canales = [...new Set(D.p.map(x => x.CANAL))].sort();
+  chart("cTend", {type:"line", data:{labels:meses, datasets:canales.map((c, i) => ({label:c, borderColor:PAL()[i], backgroundColor:PAL()[i], tension:.3,
+      data:meses.map(m => P.filter(x => x.MES === m && x.CANAL === c).length)}))}, options:{plugins:{legend:{position:"bottom"}}}});
+  const op = meses.map(m => { const c = s.cer.filter(x => x.MES === m); return c.length ? [c.filter(x => x.OPORTUNA_LEGAL === 1).length / c.length * 100, c.filter(x => x.CUMPLE_SLA === 1).length / c.length * 100] : [null, null]; });
+  chart("cOpor", {type:"line", data:{labels:meses, datasets:[
+      {label:"≤ 15 días hábiles", data:op.map(x => x[0]), borderColor:css("--c1"), backgroundColor:css("--c1"), tension:.25},
+      {label:"Acuerdo de servicio", data:op.map(x => x[1]), borderColor:css("--c3"), backgroundColor:css("--c3"), tension:.25},
+      {label:"Meta 90 %", data:meses.map(() => 90), borderColor:css("--accent"), borderDash:[5, 4], pointRadius:0}]},
+    options:{scales:{y:{min:40, max:100}}, plugins:{legend:{position:"bottom"}}}});
+  hbar("cCat", Object.entries(contar(P, "CATEGORIA")).sort((a, b) => b[1] - a[1]), css("--c1"), "Categoria");
+  const sevs = ["Crítica","Alta","Media","Baja"], cs = contar(P, "SEVERIDAD");
+  chart("cSev", {type:"doughnut", data:{labels:sevs, datasets:[{data:sevs.map(x => cs[x] || 0), backgroundColor:[css("--bad"), css("--warn"), css("--c1"), css("--c6")]}]},
+    options:{plugins:{legend:{position:"bottom"}}, onClick:(e, el) => el.length && setF("Severidad", sevs[el[0].index])}});
+  const ce = Object.entries(contar(P, "ENTE_RELACIONADO")).sort((a, b) => b[1] - a[1]);
+  chart("cEnte", {type:"bar", data:{labels:ce.map(x => x[0]), datasets:[{data:ce.map(x => x[1]), backgroundColor:PAL()}]}, options:{plugins:{legend:{display:false}}}});
+  const ab = P.filter(x => !x.ESTADO.startsWith("Cerrada")), buckets = ["0-5 días","6-15 días","16-30 días","> 30 días"], cb = contar(ab, "ENVEJECIMIENTO");
+  chart("cAging", {type:"bar", data:{labels:buckets, datasets:[{data:buckets.map(b => cb[b] || 0), backgroundColor:[css("--ok"), css("--c1"), css("--warn"), css("--bad")]}]}, options:{plugins:{legend:{display:false}}}});
+  hbar("cMed", Object.entries(contar(P, "MEDICAMENTO")).sort((a, b) => b[1] - a[1]).slice(0, 8), css("--c3"));
+  const cm = Object.entries(contar(P, "MEDIO")).sort((a, b) => b[1] - a[1]);
+  chart("cMedio", {type:"doughnut", data:{labels:cm.map(x => x[0]), datasets:[{data:cm.map(x => x[1]), backgroundColor:PAL()}]}, options:{plugins:{legend:{position:"bottom"}}}});
+  // heatmap
+  const ciudades = [...new Set(D.p.map(x => x.CIUDAD))].sort(), cats = [...new Set(D.p.map(x => x.CATEGORIA))].sort();
+  const val = (ci, ca) => P.filter(x => x.CIUDAD === ci && x.CATEGORIA === ca).length;
+  const max = Math.max(1, ...ciudades.flatMap(ci => cats.map(ca => val(ci, ca))));
+  $("#tHeat").innerHTML = `<thead><tr><th>Ciudad</th>${cats.map(c => `<th title="${esc(c)}">${esc(c.length > 18 ? c.slice(0, 17) + "…" : c)}</th>`).join("")}<th>Total</th></tr></thead><tbody>` +
+    ciudades.map(ci => `<tr><td>${esc(ci)}</td>${cats.map(ca => { const n = val(ci, ca), a = n / max;
+      return `<td data-ci="${esc(ci)}" data-ca="${esc(ca)}" style="cursor:pointer;background:color-mix(in srgb, var(--brand) ${Math.round(a * 75)}%, transparent);color:${a > .5 ? "#fff" : "inherit"}">${n || ""}</td>`; }).join("")}
+      <td><b>${P.filter(x => x.CIUDAD === ci).length}</b></td></tr>`).join("") + "</tbody>";
+  document.querySelectorAll("#tHeat td[data-ci]").forEach(td => td.onclick = () => { F.Ciudad = td.dataset.ci; F.Categoria = td.dataset.ca; $("#fCiudad").value = F.Ciudad; $("#fCategoria").value = F.Categoria; page.pqr = 0; render(); });
+  // tabla
+  const q = $("#qPqr").value.toLowerCase(), sv = $("#soloVencidas").checked;
+  const rows = P.filter(x => (!sv || x.VENCIDA_ABIERTA) && (!q || [x.RADICADO, x.DESCRIPCION, x.MEDICAMENTO, x.PUNTO, x.COMPRADOR, x.SOLICITANTE].join(" ").toLowerCase().includes(q)))
+    .sort((a, b) => (b.VENCIDA_ABIERTA - a.VENCIDA_ABIERTA) || (b.FECHA_RADICACION > a.FECHA_RADICACION ? 1 : -1));
+  const sevPill = v => `<span class="pill ${v === "Crítica" ? "p-bad" : v === "Alta" ? "p-warn" : "p-ok"}">${v}</span>`;
+  const estPill = x => `<span class="pill ${x.VENCIDA_ABIERTA ? "p-bad" : x.ESTADO.startsWith("Cerrada") ? "p-ok" : "p-warn"}">${esc(x.ESTADO)}${x.VENCIDA_ABIERTA ? " · vencida" : ""}</span>`;
+  tabla("#tPqr", "#pPqr", "pqr", rows, ["Radicado","Fecha","Canal","Ciudad","Solicitante / comprador","Categoría","Descripción","Severidad","Días háb.","Estado","Ente"],
+    x => `<td class="nw">${x.RADICADO}</td><td class="nw">${x.FECHA_RADICACION}</td><td>${esc(x.CANAL)}</td><td>${esc(x.CIUDAD)}</td>
+      <td>${esc(x.CANAL === "B2B" ? corto(x.COMPRADOR) + " · " + x.SOLICITANTE : x.PUNTO + " · " + x.SOLICITANTE)}</td><td>${esc(x.CATEGORIA)}</td>
+      <td class="wide">${esc(x.DESCRIPCION)}${x.TUTELA ? ' <span class="pill p-bad">tutela</span>' : ""}${x.REINCIDENTE ? ' <span class="pill p-warn">reincidente</span>' : ""}</td>
+      <td>${sevPill(x.SEVERIDAD)}</td><td class="num">${x.DIAS_HABILES} / ${x.DIAS_SLA}</td><td>${estPill(x)}</td><td>${esc(x.ENTE_RELACIONADO)}</td>`);
+}
+
+function tabla(sel, pagerSel, key, rows, head, rowFn, size = 25){
+  const pages = Math.max(1, Math.ceil(rows.length / size)); page[key] = Math.min(page[key], pages - 1);
+  const slice = rows.slice(page[key] * size, page[key] * size + size);
+  $(sel).innerHTML = `<thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${slice.map(x => `<tr>${rowFn(x)}</tr>`).join("") || `<tr><td colspan="${head.length}">Sin resultados para los filtros elegidos.</td></tr>`}</tbody>`;
+  $(pagerSel).innerHTML = `${fmt(rows.length)} registros · página ${page[key] + 1} de ${pages} <button ${page[key] ? "" : "disabled"} data-d="-1">‹ Anterior</button><button ${page[key] < pages - 1 ? "" : "disabled"} data-d="1">Siguiente ›</button>`;
+  $(pagerSel).querySelectorAll("button").forEach(b => b.onclick = () => { page[key] += +b.dataset.d; render(); });
+}
+
+// ---------- METAS
+function rMetas(){
+  $("#gMetas").innerHTML = D.m.map(m => {
+    const menor = m.SENTIDO === "menor", escala = menor ? Math.max(m.META * 2, m.RESULTADO) : 100;
+    return `<div class="meta ${m.SEMAFORO}"><small>${esc(m.ENTE)} · ${esc(m.NORMATIVA)}</small>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:6px"><span class="r">${pct(m.RESULTADO)}</span>
+      <span class="pill ${m.SEMAFORO === "Verde" ? "p-ok" : m.SEMAFORO === "Amarillo" ? "p-warn" : "p-bad"}">${m.SEMAFORO}</span></div>
+      <div class="bar"><i style="width:${Math.min(100, m.RESULTADO / escala * 100)}%"></i><b style="left:${m.META / escala * 100}%"></b></div>
+      <div>${esc(m.INDICADOR)}</div><small>Meta: ${menor ? "≤" : "≥"} ${pct(m.META)}</small></div>`;
+  }).join("");
+}
+
+// ---------- MERCADO
+function rMercado(){
+  const e = $("#fEnteCaso").value;
+  $("#gCasos").innerHTML = D.c.filter(c => !e || c.ENTE === e).map(c => `<article class="caso">
+      <small>${c.FECHA} · <b>${esc(c.ENTE)}</b></small><h4>${esc(c.TIPO_DE_ENTIDAD)}</h4>
+      <p>${esc(c.HALLAZGO)}</p><p class="med">${esc(c.MEDIDA)}</p><p class="lec">Lección para CRM: ${esc(c.LECCION_PARA_CRM)}</p>
+      <div class="foot"><button type="button" data-cat="${esc(c.CATEGORIA_RELACIONADA)}">Ver ${c.PQRS_CRM_MISMA_CATEGORIA} PQRS de “${esc(c.CATEGORIA_RELACIONADA)}”</button>
+      <a href="${esc(c.URL)}" target="_blank" rel="noopener">Fuente: ${esc(c.FUENTE)}</a></div></article>`).join("");
+  document.querySelectorAll("#gCasos button[data-cat]").forEach(b => b.onclick = () => { Object.keys(F).forEach(k => { F[k] = ""; $("#f" + k).value = ""; });
+    F.Categoria = b.dataset.cat; $("#fCategoria").value = F.Categoria; abrir("pqrs"); });
+}
+
+// ---------- DATOS
+function rDatos(){
+  const L = D.le;
+  $("#tLectura").innerHTML = `<thead><tr><th>Archivo</th><th>Hoja</th><th>Fila encabezado</th><th>Comprador detectado</th><th>Líneas</th><th>Estado</th><th>Columnas reconocidas</th><th>Faltantes</th></tr></thead><tbody>` +
+    L.map(x => `<tr><td>${esc(x.ARCHIVO)}</td><td>${esc(x.HOJA)}</td><td class="num">${esc(x.FILA_ENCABEZADO)}</td><td>${esc(x.COMPRADOR)}</td><td class="num">${esc(x.LINEAS)}</td>
+      <td><span class="pill ${String(x.ESTADO).startsWith("LE") ? "p-ok" : "p-bad"}">${esc(x.ESTADO)}</span></td>
+      <td class="wide">${esc(x.COLUMNAS_RECONOCIDAS).split("; ").join("<br>")}</td><td>${esc(x.COLUMNAS_FALTANTES)}</td></tr>`).join("") + "</tbody>";
 }
 </script>
 </body>

@@ -16,6 +16,15 @@ Los compradores institucionales (grande, mediano y pequeño) envían sus bases d
 3. **Recibir y hacer seguimiento a las PQR** de usuarios internos (equipos de licitaciones y convenios) y de compradores, dentro del término legal.
 4. Entregar **informes ejecutivos** y **documentos gerenciales**.
 
+## Novedades
+
+- **Lectura inteligente:** reconoce columnas aunque cambien de nombre (`Código CUM`, `Valor unitario ofertado`, `cum/ium`, `precio`…), busca el encabezado en cualquier hoja y fila, y lee cualquier archivo `.xlsx`, `.xls`, `.xlsb` o `.csv` sin importar su nombre. Deja un reporte de lectura.
+- **Compradores ficticios con nombre:** Red Hospitalaria Altos del Cóndor IPS (grande), Clínica Integral Guayacán (mediano) e IPS Salud Nogal (pequeño), cada uno con un formato de archivo distinto.
+- **440 PQRS dinámicas** en dos canales (B2B y dispensación), con estacionalidad, severidad, acuerdo de servicio, reincidencia, tutelas, escalamiento a ente, satisfacción e impacto económico.
+- **Metas regulatorias** (SIC, Supersalud, INVIMA e internas) con semáforo.
+- **Casos reales del mercado anonimizados**, con fuente, relacionados con las categorías de PQRS.
+- **Dashboard con pestañas y filtros cruzados** (comprador, canal, ciudad, categoría, severidad, estado, mes) y gráficos que filtran al hacer clic.
+
 ## Funciones del cargo que cubre
 
 | Función | Entregable |
@@ -64,8 +73,10 @@ Ej.: IRBESARTÁN 150 mg x 25 tabletas: tarifa $20.143 vs PMV $17.250  →  +16,8
 | Aprobadas sin observaciones | 71,4 % |
 | Líneas sobre el PMV | 6 |
 | Excedente estimado sobre PMV | $25,1 millones/mes |
-| PQR recibidas | 420 |
-| Oportunidad de respuesta | 85,9 % |
+| PQRS recibidas | 440 |
+| Oportunidad legal (≤ 15 días hábiles) | 95,3 % |
+| Cumplimiento del acuerdo de servicio | 74,6 % |
+| Metas regulatorias en rojo | 3 de 6 |
 
 ![Estado de las líneas](reportes/graficos/estado_lineas.png)
 
