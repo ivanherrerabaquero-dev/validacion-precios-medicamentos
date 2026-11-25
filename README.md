@@ -18,6 +18,8 @@ Los compradores institucionales (grande, mediano y pequeño) envían sus bases d
 
 ## Novedades
 
+- **Sin datos aleatorios:** el notebook solo lee los Excel de Drive (ofertas de los 3 compradores, base de PQRS y catálogo con precio piso). Si cambias un valor y vuelves a ejecutar, cambian los resultados.
+- **Cruce con la Circular 022:** por cada línea muestra tarifa ofertada, PMV de la Circular 022, % de ganancia sobre el PMV, precio piso (costo), % de margen y % de pérdida cuando la tarifa queda bajo el costo (hoja `CRUCE_CIRCULAR_022`).
 - **Lectura inteligente:** reconoce columnas aunque cambien de nombre (`Código CUM`, `Valor unitario ofertado`, `cum/ium`, `precio`…), busca el encabezado en cualquier hoja y fila, y lee cualquier archivo `.xlsx`, `.xls`, `.xlsb` o `.csv` sin importar su nombre. Deja un reporte de lectura.
 - **Compradores ficticios con nombre:** Red Hospitalaria Altos del Cóndor IPS (grande), Clínica Integral Guayacán (mediano) e IPS Salud Nogal (pequeño), cada uno con un formato de archivo distinto.
 - **440 PQRS dinámicas** en dos canales (B2B y dispensación), con estacionalidad, severidad, acuerdo de servicio, reincidencia, tutelas, escalamiento a ente, satisfacción e impacto económico.
@@ -73,6 +75,8 @@ Ej.: IRBESARTÁN 150 mg x 25 tabletas: tarifa $20.143 vs PMV $17.250  →  +16,8
 | Aprobadas sin observaciones | 71,4 % |
 | Líneas sobre el PMV | 6 |
 | Excedente estimado sobre PMV | $25,1 millones/mes |
+| Líneas con pérdida (bajo el costo) | 5 · $12,4 millones/mes |
+| Margen promedio de las ofertas | 13,7 % |
 | PQRS recibidas | 440 |
 | Oportunidad legal (≤ 15 días hábiles) | 95,3 % |
 | Cumplimiento del acuerdo de servicio | 74,6 % |
@@ -94,10 +98,11 @@ Ej.: IRBESARTÁN 150 mg x 25 tabletas: tarifa $20.143 vs PMV $17.250  →  +16,8
 
 ## Cómo ejecutarlo
 
-1. Abre el notebook con el botón **Abrir en Colab**.
-2. Ejecuta las celdas en orden (*Entorno de ejecución → Ejecutar todas*).
-3. Opcional: cuando la Comisión publique una nueva versión de la tabla, súbela como `data/referencia/circular_oficial_nueva.xlsb` y ejecuta el Paso 2B.
-4. Opcional: activa `PUBLICAR = True` en el Paso 9 para subir los resultados y actualizar el portal.
+1. Sube a tu Drive, carpeta `TECNOLOGIAS EN SALUD/entrada`, las 3 ofertas y `base_pqrs_2026.xlsx`; y a `referencia`, la tabla de la Circular 022 y `catalogo_empresa.xlsx` (están en `data/` de este repositorio).
+2. Abre el notebook con el botón **Abrir en Colab**.
+3. Ejecuta las celdas en orden (*Entorno de ejecución → Ejecutar todas*).
+4. Opcional: cuando la Comisión publique una nueva versión de la tabla, súbela como `data/referencia/circular_oficial_nueva.xlsb` y ejecuta el Paso 2B.
+5. Opcional: activa `PUBLICAR = True` en el Paso 9 para subir los resultados y actualizar el portal.
 
 ## Herramientas
 

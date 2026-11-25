@@ -379,7 +379,8 @@ function rPrecios(){
     ["Líneas", fmt(L.length)], ["Rechazadas", fmt(L.filter(x => x.ESTADO === "RECHAZADA").length), "bad"],
     ["Con observaciones", fmt(L.filter(x => x.ESTADO === "CON OBSERVACIONES").length), "warn"],
     ["Sobre el PMV", fmt(sobre.length), sobre.length ? "bad" : "ok"], ["Excedente / mes", millones(exc), exc ? "bad" : "ok"],
-    ["Bajo precio piso", fmt(bajo.length), bajo.length ? "warn" : "ok"], ["Valor ofertado / mes", millones(val)],
+    ["Bajo precio piso", fmt(bajo.length), bajo.length ? "warn" : "ok"], ["Pérdida / mes", millones(L.reduce((a, x) => a + (x.PERDIDA_MES || 0), 0)), bajo.length ? "bad" : "ok"],
+    ["Valor ofertado / mes", millones(val)],
   ]);
   estadoChart("cEstado", L);
   const tipos = {}; L.forEach(x => (x.HALLAZGOS || "").split("; ").filter(Boolean).forEach(h => tipos[h] = (tipos[h] || 0) + 1));
@@ -396,13 +397,16 @@ function rPrecios(){
   // tabla
   const q = $("#qLineas").value.toLowerCase(), e = $("#eLineas").value;
   const rows = L.filter(x => (!e || x.ESTADO === e) && (!q || [x.CUM, x.DESCRIPCION, x.HALLAZGOS].join(" ").toLowerCase().includes(q)))
-    .sort((a, b) => (b.EXCEDENTE_MES || 0) - (a.EXCEDENTE_MES || 0) || (a.ESTADO > b.ESTADO ? 1 : -1));
+    .sort((a, b) => ((b.EXCEDENTE_MES || 0) + (b.PERDIDA_MES || 0)) - ((a.EXCEDENTE_MES || 0) + (a.PERDIDA_MES || 0)) || (a.ESTADO > b.ESTADO ? 1 : -1));
   const pill = s => `<span class="pill ${s === "APROBADA" ? "p-ok" : s === "RECHAZADA" ? "p-bad" : "p-warn"}">${s}</span>`;
-  tabla("#tLineas", "#pLineas", "lineas", rows, ["Comprador","CUM","Medicamento","Cantidad","Tarifa","PMV","% sobre","Excedente/mes","Estado","Hallazgos"],
+  const res = r => r === "Dentro del rango" ? "p-ok" : (r || "").startsWith("Sin PMV") ? "p-warn" : "p-bad";
+  tabla("#tLineas", "#pLineas", "lineas", rows, ["Comprador","CUM","Medicamento","Cantidad","Tarifa ofertada","PMV Circular 022","% ganancia sobre PMV","Precio piso (costo)","% margen","% pérdida","Excedente/mes","Pérdida/mes","Resultado del cruce","Estado","Hallazgos"],
     x => `<td>${esc(corto(x.COMPRADOR))}</td><td>${esc(x.CUM)}</td><td class="wide">${esc(x.DESCRIPCION)}</td><td class="num">${fmt(x.CANTIDAD)}</td>
       <td class="num">${x.TARIFA != null ? pesos(x.TARIFA) : "–"}</td><td class="num">${x.PMV_INSTITUCIONAL != null ? pesos(x.PMV_INSTITUCIONAL) : "–"}</td>
-      <td class="num">${x.PCT_SOBRE_PMV ? pct(x.PCT_SOBRE_PMV) : "–"}</td><td class="num">${x.EXCEDENTE_MES ? pesos(x.EXCEDENTE_MES) : "–"}</td>
-      <td>${pill(x.ESTADO)}</td><td class="wide">${esc(x.HALLAZGOS)}</td>`);
+      <td class="num">${x.PCT_SOBRE_PMV ? pct(x.PCT_SOBRE_PMV) : "–"}</td><td class="num">${x.PRECIO_PISO != null ? pesos(x.PRECIO_PISO) : "–"}</td>
+      <td class="num">${x.PCT_MARGEN != null ? pct(x.PCT_MARGEN) : "–"}</td><td class="num">${x.PCT_PERDIDA ? pct(x.PCT_PERDIDA) : "–"}</td>
+      <td class="num">${x.EXCEDENTE_MES ? pesos(x.EXCEDENTE_MES) : "–"}</td><td class="num">${x.PERDIDA_MES ? pesos(x.PERDIDA_MES) : "–"}</td>
+      <td><span class="pill ${res(x.RESULTADO_CRUCE)}">${esc(x.RESULTADO_CRUCE || "")}</span></td><td>${pill(x.ESTADO)}</td><td class="wide">${esc(x.HALLAZGOS)}</td>`);
 }
 
 // ---------- PQRS
