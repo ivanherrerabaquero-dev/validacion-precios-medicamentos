@@ -357,19 +357,19 @@ const nota = (id, html) => { const el = document.getElementById("n_" + id); if (
 const mesTxt = m => { const [y, mm] = m.split("-"); return ["", "enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][+mm] + " " + y; };
 const variacion = (a, b) => a ? `${b >= a ? "+" : ""}${pct((b - a) / a * 100)}` : "–";
 // etiquetas: valor dentro de cada segmento apilado
-// número y % del total de la barra (columna apilada)
+// conteos: solo el número; proporciones (donas) y cumplimiento (líneas): solo el %
 const totCol = c => c.chart.data.datasets.reduce((a, d, i) => a + (c.chart.isDatasetVisible(i) ? (d.data[c.dataIndex] || 0) : 0), 0);
 const lblDentro = (min = 3) => ({display: c => (c.dataset.data[c.dataIndex] || 0) >= min, color:"#fff", font:{weight:600, size:10.5}, textAlign:"center",
-  formatter: (v, c) => `${fmt(v)}\n${pct(v / Math.max(1, totCol(c)) * 100)}`});
+  formatter: v => fmt(v)});
 // etiqueta al final de la barra con valor y % del total
 const lblFin = (total, conPct = true) => ({display: c => (c.dataset.data[c.dataIndex] || 0) > 0, anchor:"end", align:"end", offset:2, clamp:true,
-  color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => conPct && total ? `${fmt(v)} · ${pc(v, total)}` : fmt(v)});
+  color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => conPct && total ? fmt(v) : fmt(v)});
 // total encima de una barra apilada (se dibuja sobre el último conjunto de datos)
 const lblTotal = (totales, horizontal = false) => ({display: c => c.datasetIndex === c.chart.data.datasets.length - 1 && totales[c.dataIndex] > 0,
   anchor:"end", align:"end", offset:2, color: () => css("--ink"), font:{weight:700, size:11.5},
-  formatter: (v, c) => { const g = totales.reduce((a, b) => a + b, 0); return `${fmt(totales[c.dataIndex])} · ${pc(totales[c.dataIndex], g)}`; }});
+  formatter: (v, c) => { const g = totales.reduce((a, b) => a + b, 0); return fmt(totales[c.dataIndex]); }});
 const lblDona = () => ({color:"#fff", font:{weight:600, size:11}, display: c => { const t = c.dataset.data.reduce((a, b) => a + b, 0); return t && c.dataset.data[c.dataIndex] / t >= .05; },
-  formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + b, 0); return `${fmt(v)}\n${pc(v, t)}`; }, textAlign:"center"});
+  formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + b, 0); return pc(v, t); }, textAlign:"center"});
 
 function chart(id, cfg){
   if (charts[id]) charts[id].destroy();
@@ -458,10 +458,11 @@ function notaMesCanal(id, P, meses){
   if (!P.length) return nota(id, "Sin casos para los filtros elegidos.");
   const pico = meses.reduce((a, m) => n(m) > n(a) ? m : a, meses[0]);
   const bm = m => b.filter(x => x.MES === m).length, dm = m => d.filter(x => x.MES === m).length;
-  nota(id, `En el periodo hay <b>${fmt(P.length)} PQRS</b>: <b>${fmt(b.length)} B2B comerciales (${pc(b.length, P.length)})</b> y <b>${fmt(d.length)} de dispensación (${pc(d.length, P.length)})</b>. ` +
-    `El mes con más casos fue <b>${mesTxt(pico)}</b> con ${fmt(n(pico))}, de los cuales ${pc(bm(pico), n(pico))} fueron B2B. ` +
-    `Las B2B pasaron de ${bm(meses[0])} en ${mesTxt(meses[0])} a ${bm("2026-10")} en octubre (${variacion(bm(meses[0]), bm("2026-10"))}), por las solicitudes de ajuste de precio tras la Circular 022; ` +
-    `las de dispensación bajaron de ${dm(meses[0])} a ${dm("2026-10")} (${variacion(dm(meses[0]), dm("2026-10"))}). Noviembre tiene corte al día 20.`);
+  const ult = meses.filter(m => m < "2026-11").slice(-1)[0];
+  nota(id, `<b>Qué muestra:</b> cuántas PQRS (quejas y solicitudes, no ventas) se recibieron cada mes. Azul = <b>B2B</b>: solicitudes de compradores institucionales y de los equipos de licitaciones y convenios. Naranja = <b>dispensación</b>: quejas de pacientes en los puntos de entrega.<br>` +
+    `<b>Cifras:</b> ${fmt(P.length)} PQRS en total → <b>${fmt(b.length)} B2B</b> (${pc(b.length, P.length)} del total) y <b>${fmt(d.length)} de dispensación</b> (${pc(d.length, P.length)}). ` +
+    `El mes con más casos fue ${mesTxt(pico)}: ${fmt(n(pico))} (${fmt(bm(pico))} B2B y ${fmt(dm(pico))} de dispensación). ` +
+    `Las B2B subieron de ${fmt(bm(meses[0]))} en ${mesTxt(meses[0]).split(" ")[0]} a ${fmt(bm(ult))} en ${mesTxt(ult).split(" ")[0]} por las solicitudes de ajuste de precio de la Circular 022. Noviembre solo tiene datos hasta el día 20.`);
 }
 function estadoChart(id, L){
   const comps = [...new Set(L.map(x => x.COMPRADOR))].sort();
@@ -510,7 +511,7 @@ function rPrecios(){
   chart("cValor", {type:"bar", data:{labels:comps.map(corto), datasets:[{label:"Valor ofertado/mes", backgroundColor:css("--c1"),
       data:comps.map(c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.VALOR_OFERTA_MES || 0), 0))},
       {label:"Excedente sobre PMV", backgroundColor:css("--bad"), data:comps.map(c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.EXCEDENTE_MES || 0), 0))}]},
-    options:{layout:{padding:{top:18}}, plugins:{legend:{position:"bottom"}, datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:10.5}, textAlign:"center", formatter: (v, c) => `${millones(v)}\n${pc(v, c.dataset.data.reduce((a, b) => a + b, 0))}`},
+    options:{layout:{padding:{top:18}}, plugins:{legend:{position:"bottom"}, datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:10.5}, textAlign:"center", formatter: (v, c) => millones(v)},
       tooltip:{callbacks:{label:c => `${c.dataset.label}: ${pesos(c.raw)}`}}}, scales:{y:{grace:"10%", ticks:{callback:v => millones(v)}}}}});
   const vc = c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.VALOR_OFERTA_MES || 0), 0);
   const topV = comps.reduce((a, c) => vc(c) > vc(a) ? c : a, comps[0]);
@@ -568,8 +569,8 @@ function rB2B(){
   const compsB = [...new Set(B.map(x => x.COMPRADOR))].filter(c => c !== "—").sort();
   const nB = c => B.filter(x => x.COMPRADOR === c).length, iB = c => B.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.IMPACTO_COP || 0), 0);
   chart("cB2BComp", {type:"bar", data:{labels:compsB.map(corto), datasets:[
-      {label:"Casos", data:compsB.map(nB), backgroundColor:css("--c1"), yAxisID:"y", datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${fmt(v)} · ${pc(v, B.length)}`}},
-      {label:"Impacto económico", data:compsB.map(iB), backgroundColor:css("--c2"), yAxisID:"y2", datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, textAlign:"center", formatter: v => `${millones(v)}\n${pc(v, sb.impacto)}`}}]},
+      {label:"Casos", data:compsB.map(nB), backgroundColor:css("--c1"), yAxisID:"y", datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => fmt(v)}},
+      {label:"Impacto económico", data:compsB.map(iB), backgroundColor:css("--c2"), yAxisID:"y2", datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, textAlign:"center", formatter: v => millones(v)}}]},
     options:{layout:{padding:{top:20}}, plugins:{legend:{position:"bottom"}, tooltip:{callbacks:{label:c => c.dataset.yAxisID === "y2" ? `Impacto: ${pesos(c.raw)}` : `Casos: ${c.raw}`}}},
       scales:{y:{grace:"12%", title:{display:true, text:"Casos"}}, y2:{position:"right", grace:"12%", grid:{display:false}, ticks:{callback:v => millones(v)}}},
       onClick:(e, el) => el.length && setF("Comprador", compsB[el[0].index])}});
@@ -578,7 +579,7 @@ function rB2B(){
     `El impacto económico total B2B es <b>${millones(sb.impacto)}</b>: valor en discusión por ajustes de precio, facturación por encima de lo pactado y cartera retenida.` : "");
   const aj = meses.map(m => B.filter(x => x.MES === m && x.CATEGORIA === "Ajuste de precios Circular 022").length);
   chart("cB2BAjuste", {type:"bar", data:{labels:mesL, datasets:[{label:"Solicitudes de ajuste", data:aj, backgroundColor:meses.map(m => m >= "2026-08" ? css("--c2") : css("--c6")), borderRadius:3,
-      datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:700, size:11.5}, formatter: v => `${fmt(v)} · ${pc(v, aj.reduce((a, b) => a + b, 0))}`}}]},
+      datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:700, size:11.5}, formatter: v => fmt(v)}}]},
     options:{layout:{padding:{top:20}}, plugins:{legend:{display:false}}, scales:{y:{grace:"12%"}}}});
   const antes = aj.slice(0, 2).reduce((a, b) => a + b, 0) / 2, desp = aj.slice(3, 5).reduce((a, b) => a + b, 0) / 2;
   nota("cB2BAjuste", `La Circular 022 entró en vigencia el <b>19 de agosto de 2026</b> (barras naranjas desde agosto). Las solicitudes de ajuste de tarifa pasaron de <b>${antes.toFixed(1).replace(".", ",")} al mes</b> en junio y julio a <b>${desp.toFixed(1).replace(".", ",")} al mes</b> en septiembre y octubre ` +
@@ -606,8 +607,8 @@ function rDisp(){
   ]);
   const totD = meses.map(m => Ds.filter(x => x.MES === m).length), tutD = meses.map(m => Ds.filter(x => x.MES === m && x.TUTELA).length);
   chart("cDisMes", {type:"bar", data:{labels:mesL, datasets:[
-      {label:"Casos", data:totD, backgroundColor:css("--c2"), borderRadius:3, datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:700, size:11}, textAlign:"center", formatter: v => `${fmt(v)}\n${pc(v, Ds.length)}`}},
-      {label:"Con tutela", data:tutD, backgroundColor:css("--bad"), borderRadius:3, datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--bad"), font:{weight:600, size:10.5}, textAlign:"center", formatter: (v, c) => `${fmt(v)}\n${pc(v, totD[c.dataIndex])}`}}]},
+      {label:"Casos", data:totD, backgroundColor:css("--c2"), borderRadius:3, datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:700, size:11}, textAlign:"center", formatter: v => fmt(v)}},
+      {label:"Con tutela", data:tutD, backgroundColor:css("--bad"), borderRadius:3, datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--bad"), font:{weight:600, size:10.5}, textAlign:"center", formatter: (v, c) => fmt(v)}}]},
     options:{layout:{padding:{top:20}}, plugins:{legend:{position:"bottom"}}, scales:{y:{grace:"10%"}}}});
   const picoD = meses[totD.indexOf(Math.max(...totD))];
   nota("cDisMes", Ds.length ? `Se registraron <b>${fmt(Ds.length)} casos de dispensación</b>, en promedio ${(totD.slice(0, 5).reduce((a, b) => a + b, 0) / 5).toFixed(0)} por mes completo. ` +
@@ -619,8 +620,8 @@ function rDisp(){
     `Sumando pendientes y desabastecimiento son <b>${pendTot} casos (${pc(pendTot, Ds.length)})</b>, el mismo riesgo por el que la Supersalud ha impuesto medidas cautelares a otros gestores.` : "");
   const ciuD = Object.entries(contar(Ds, "CIUDAD")).sort((a, b) => b[1] - a[1]);
   chart("cDisCiudad", {type:"bar", data:{labels:ciuD.map(x => x[0]), datasets:[
-      {label:"Casos", data:ciuD.map(x => x[1]), backgroundColor:css("--c2"), datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${fmt(v)} · ${pc(v, Ds.length)}`}},
-      {label:"Tutelas", data:ciuD.map(x => Ds.filter(y => y.CIUDAD === x[0] && y.TUTELA).length), backgroundColor:css("--bad"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--bad"), font:{weight:600, size:11}, formatter: (v, c) => `${fmt(v)} · ${pc(v, ciuD[c.dataIndex][1])} de la ciudad`}}]},
+      {label:"Casos", data:ciuD.map(x => x[1]), backgroundColor:css("--c2"), datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => fmt(v)}},
+      {label:"Tutelas", data:ciuD.map(x => Ds.filter(y => y.CIUDAD === x[0] && y.TUTELA).length), backgroundColor:css("--bad"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--bad"), font:{weight:600, size:11}, formatter: (v, c) => fmt(v)}}]},
     options:{indexAxis:"y", layout:{padding:{right:70}}, plugins:{legend:{position:"bottom"}}, scales:{y:{ticks:{autoSkip:false}}},
       onClick:(e, el) => el.length && setF("Ciudad", ciuD[el[0].index][0])}});
   nota("cDisCiudad", ciuD.length ? `<b>${esc(ciuD[0][0])}</b> concentra ${ciuD[0][1]} casos (${pc(ciuD[0][1], Ds.length)}), seguida de ${esc((ciuD[1] || ["–"])[0])} con ${(ciuD[1] || [0, 0])[1]} (${pc((ciuD[1] || [0, 0])[1], Ds.length)}). ` +
@@ -660,13 +661,13 @@ function rPqrs(){
     `Ningún canal alcanza la meta. La oportunidad legal (15 días hábiles) sí es alta: ${pct(s.opor)} en total, porque el plazo interno por severidad es más exigente que el legal.`);
   const sevs = ["Crítica","Alta","Media","Baja"];
   chart("cSev", {type:"bar", data:{labels:sevs, datasets:[
-      {label:"B2B comercial", data:sevs.map(v => B.filter(x => x.SEVERIDAD === v).length), backgroundColor:css("--c1"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${v} · ${pc(v, B.length)}`}},
-      {label:"Dispensación", data:sevs.map(v => Ds.filter(x => x.SEVERIDAD === v).length), backgroundColor:css("--c2"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${v} · ${pc(v, Ds.length)}`}}]},
+      {label:"B2B comercial", data:sevs.map(v => B.filter(x => x.SEVERIDAD === v).length), backgroundColor:css("--c1"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => fmt(v)}},
+      {label:"Dispensación", data:sevs.map(v => Ds.filter(x => x.SEVERIDAD === v).length), backgroundColor:css("--c2"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => fmt(v)}}]},
     options:{layout:{padding:{top:20}}, plugins:{legend:{position:"bottom"}}, scales:{y:{grace:"12%"}}, onClick:(e, el) => el.length && setF("Severidad", sevs[el[0].index])}});
   const crit = c => (c === "B" ? B : Ds).filter(x => x.SEVERIDAD === "Crítica").length;
   nota("cSev", `El % de cada barra es sobre el total de su canal. Los casos <b>críticos</b> pesan ${pc(crit("B"), B.length)} en B2B y <b>${pc(crit("D"), Ds.length)} en dispensación</b>, donde se concentran los riesgos para el paciente (pendientes, desabastecimiento y errores de entrega).`);
   const ce = Object.entries(contar(P, "ENTE_RELACIONADO")).sort((a, b) => b[1] - a[1]);
-  chart("cEnte", {type:"bar", data:{labels:ce.map(x => x[0]), datasets:[{data:ce.map(x => x[1]), backgroundColor:PAL(), datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${v} · ${pc(v, P.length)}`}}]},
+  chart("cEnte", {type:"bar", data:{labels:ce.map(x => x[0]), datasets:[{data:ce.map(x => x[1]), backgroundColor:PAL(), datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => fmt(v)}}]},
     options:{layout:{padding:{top:20}}, plugins:{legend:{display:false}}, scales:{y:{grace:"12%"}}}});
   nota("cEnte", ce.length ? `<b>${esc(ce[0][0])}</b> es el ente relacionado con más casos: ${ce[0][1]} (${pc(ce[0][1], P.length)}). ${s.esc} casos (${pc(s.esc, P.length)}) ya fueron escalados a un ente de control.` : "");
   const ab = P.filter(x => !x.ESTADO.startsWith("Cerrada")), buckets = ["0-5 días","6-15 días","16-30 días","> 30 días"], cbk = contar(ab, "ENVEJECIMIENTO");

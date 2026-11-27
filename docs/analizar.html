@@ -85,12 +85,12 @@ td.wide{min-width:240px}
       <h1>Analizar una oferta o una base de PQRS</h1></div>
     <div style="display:flex;gap:8px"><a href="index.html" style="align-self:center">Portal</a><button id="salir" type="button">Cerrar sesión</button></div>
   </div>
-  <p class="sub">Sube un Excel (.xlsx, .xls) o CSV. Se reconoce el tipo de archivo por sus columnas, aunque tengan otro nombre: una <b>oferta</b> (CUM y tarifa) se cruza con la Circular 022 y el SISMED; una <b>base de PQRS</b> (radicado, fecha y categoría) se resume por canal y categoría.</p>
+  <p class="sub">Sube un Excel (.xlsx, .xls, .xlsb), ODS o CSV. Se reconoce el tipo de archivo por sus columnas, aunque tengan otro nombre: una <b>oferta</b> (CUM y tarifa) se cruza con la Circular 022 y el SISMED; una <b>base de PQRS</b> (radicado, fecha y categoría) se resume por canal y categoría.</p>
 
   <div class="card">
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Seleccionar archivo">
       <b>Arrastra el archivo aquí</b> o haz clic para seleccionarlo<br><span class="lectura" id="estadoRef">Cargando tablas de referencia…</span>
-      <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv" class="hidden">
+      <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.xlsb,.ods,.csv,.txt" class="hidden">
     </div>
     <div class="params">
       <label>Forma de pago<select id="pago"><option value="auto">Detectar del archivo</option><option value="credito">Crédito (90 días)</option><option value="contado">Contado</option></select></label>
@@ -172,9 +172,42 @@ function mapear(cols, sin, umbral = .78){
 }
 function encontrar(hojas, sin, oblig){
   let mejor = null;
-  for (const [hoja, filas] of Object.entries(hojas)) for (let i = 0; i < Math.min(40, filas.length); i++){
-    const m = mapear(filas[i] || [], sin);
-    if (oblig.every(o => o in m) && (!mejor || Object.keys(m).length > Object.keys(mejor.mapa).length)) mejor = {hoja, fila:i, mapa:m};
+  for (const [hoja, filas] of Object.entries(hojas)) for (let i = 0; i < Math.min(120, filas.length); i++){
+    const a = filas[i] || [], b = filas[i + 1] || [];
+    const unida = Array.from({length:Math.max(a.length, b.length)}, (_, k) => [a[k], b[k]].filter(x => x != null && String(x).trim() !== "").join(" "));
+    for (const [cab, filaDatos] of [[a, i], [unida, i + 1]]){   // encabezado en una fila o repartido en dos
+      const m = mapear(cab, sin);
+      if (oblig.every(o => o in m) && (!mejor || Object.keys(m).length > Object.keys(mejor.mapa).length)) mejor = {hoja, fila:filaDatos, mapa:m};
+    }
+  }
+  return mejor;
+}
+// Lectura por contenido: si los encabezados no se reconocen, busca la columna cuyos valores parecen CUM
+// y la columna numérica que parece precio. Así se leen archivos con títulos raros o sin encabezado.
+const RX_CUM = /^\s*(\d{4,9})\s*-\s*(\d{1,3})\s*$/;
+function porContenido(hojas){
+  let mejor = null;
+  for (const [hoja, filas] of Object.entries(hojas)){
+    const ancho = Math.max(0, ...filas.slice(0, 400).map(r => (r || []).length));
+    let colCum = -1, maxCum = 0;
+    for (let c = 0; c < ancho; c++){ const n = filas.slice(0, 2000).filter(r => r && RX_CUM.test(String(r[c] ?? ""))).length; if (n > maxCum){ maxCum = n; colCum = c; } }
+    if (maxCum < 2) continue;
+    const primera = filas.findIndex(r => r && RX_CUM.test(String(r[colCum] ?? "")));
+    const datos = filas.slice(primera).filter(r => r && RX_CUM.test(String(r[colCum] ?? "")));
+    const puntajes = [];
+    for (let c = 0; c < ancho; c++){ if (c === colCum) continue;
+      const nums = datos.map(r => aNumero(r[c])).filter(v => !isNaN(v) && v > 0);
+      if (nums.length < datos.length * .6) continue;
+      const med = nums.slice().sort((x, y) => x - y)[Math.floor(nums.length / 2)];
+      const enteros = nums.filter(v => Number.isInteger(v)).length / nums.length;
+      puntajes.push({c, med, enteros, n:nums.length}); }
+    if (!puntajes.length) continue;
+    // precio: mediana más alta; cantidad: entera con mediana más baja
+    const precio = puntajes.slice().sort((a, b) => b.med - a.med)[0];
+    const cant = puntajes.filter(p => p.c !== precio.c && p.enteros > .9).sort((a, b) => a.med - b.med)[0];
+    let desc = -1, maxLen = 0;
+    for (let c = 0; c < ancho; c++){ const l = datos.slice(0, 50).reduce((a, r) => a + (typeof r[c] === "string" ? r[c].length : 0), 0); if (c !== colCum && l > maxLen){ maxLen = l; desc = c; } }
+    if (!mejor || maxCum > mejor.n) mejor = {hoja, fila:Math.max(0, primera - 1), mapa:{CUM:colCum, TARIFA:precio.c, ...(cant ? {CANTIDAD:cant.c} : {}), ...(desc >= 0 ? {DESCRIPCION:desc} : {})}, n:maxCum, contenido:true};
   }
   return mejor;
 }
@@ -192,10 +225,12 @@ function aNumero(v){
 }
 
 const SIN_OFERTA = {
-  CUM:["CUM","CODIGO CUM","CUM IUM","IUM","EXPEDIENTE CONSECUTIVO","COD CUM"],
+  CUM:["CUM","CODIGO CUM","CUM IUM","IUM","EXPEDIENTE CONSECUTIVO","COD CUM","CODIGO UNICO DE MEDICAMENTO","CODIGO","REGISTRO CUM"],
+  MAPIS:["MAPIS","MAPIPOS","CODIGO MAPIPOS","CODIGO MAPIS","CUPS","CODIGO CUPS"],
   DESCRIPCION:["DESCRIPCION","MEDICAMENTO","PRODUCTO","NOMBRE DEL MEDICAMENTO"],
   CANTIDAD:["CANTIDAD ESTIMADA MES","CANTIDAD","CANT MENSUAL","CANTIDAD MENSUAL","UNIDADES","VOLUMEN"],
-  TARIFA:["TARIFA PRESENTACION COMERCIAL","TARIFA","TARIFA UNITARIA","VALOR UNITARIO","VALOR UNITARIO OFERTADO","PRECIO","PRECIO UNITARIO","VALOR OFERTADO"],
+  TARIFA:["TARIFA PRESENTACION COMERCIAL","TARIFA","TARIFA UNITARIA","VALOR UNITARIO","VALOR UNITARIO OFERTADO","PRECIO","PRECIO UNITARIO","VALOR OFERTADO",
+    "PRECIO DE VENTA","VALOR","VALOR UNIDAD","PRECIO OFERTA","PRECIO PROPUESTO","VR UNITARIO","VLR UNITARIO","COSTO UNITARIO","PRECIO SISMED PROMEDIO","PMV INSTITUCIONAL","PRECIO MAXIMO"],
 };
 const SIN_PQRS = {
   RADICADO:["RADICADO","NUMERO DE RADICADO","ID PQRS"], FECHA:["FECHA RADICACION","FECHA DE RADICACION","FECHA RECIBIDO","FECHA DE RECEPCION"],
@@ -228,10 +263,13 @@ function alertaRef(){ $("#estadoRef").textContent = "Espera a que terminen de ca
 function analizar({nombre, hojas}){
   const pq = encontrar(hojas, SIN_PQRS, ["RADICADO", "FECHA", "CATEGORIA"]);
   if (pq) return analizarPqrs(nombre, hojas, pq);
-  const of = encontrar(hojas, SIN_OFERTA, ["CUM", "TARIFA"]);
+  const of = encontrar(hojas, SIN_OFERTA, ["CUM", "TARIFA"]) || porContenido(hojas);
   if (of) return analizarOferta(nombre, hojas, of);
   $("#res").classList.remove("hidden"); $("#tRes").textContent = "No se reconoció el archivo";
-  $("#lectura").textContent = "No encontré una fila con columnas de CUM y tarifa (oferta) ni de radicado, fecha y categoría (PQRS) en las primeras 40 filas de ninguna hoja.";
+  const muestra = Object.entries(hojas).map(([h, f]) => { const r = f.find(x => x && x.filter(v => v != null && String(v).trim() !== "").length >= 3) || [];
+    return `Hoja “${esc(h)}”: ${r.filter(v => v != null).slice(0, 10).map(v => esc(String(v).slice(0, 30))).join(" | ") || "(vacía)"}`; }).join("<br>");
+  $("#lectura").innerHTML = "No encontré columnas de CUM y precio ni valores con forma de CUM (por ejemplo 19911481-1), ni una base de PQRS. " +
+    "Esto es lo primero que encontré en cada hoja:<br>" + muestra + "<br>Si el archivo es un PDF, una norma o no trae CUM, usa el <b>asistente de IA del Paso 10 en Colab</b>.";
   ["#kpis", "#tabla"].forEach(s => $(s).innerHTML = ""); document.querySelectorAll(".grid").forEach(g => g.style.display = "none");
 }
 
@@ -242,7 +280,7 @@ function chart(id, cfg){
   graficos[id] = new Chart(document.getElementById(id), cfg);
 }
 Chart.register(ChartDataLabels);
-const lblFin = total => ({display:c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:v => `${fmt(v)} · ${pc(v, total)}`});
+const lblFin = total => ({display:c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:v => fmt(v)});
 const kpiHtml = arr => arr.map(([l, v, c, d]) => `<div class="kpi ${c || ""}"><div class="l">${l}</div><div class="v">${v}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`).join("");
 
 // ---------------- oferta
@@ -283,7 +321,7 @@ function analizarOferta(nombre, hojas, ub){
   const ok = L.filter(x => /Dentro|viable|Alineado/.test(x.res)).length, exc = riesgo.reduce((a, x) => a + x.exceso, 0);
   $("#res").classList.remove("hidden");
   $("#tRes").textContent = `Oferta de ${comprador}`;
-  $("#lectura").innerHTML = `Archivo <b>${esc(nombre)}</b> · hoja “${esc(ub.hoja)}”, encabezado en la fila ${ub.fila + 1} · forma de pago: <b>${pago === "contado" ? "contado" : "crédito (90 días)"}</b>${pagoTxt ? ` (leída del archivo: “${esc(pagoTxt)}”)` : " (no venía en el archivo)"}.`;
+  $("#lectura").innerHTML = `Archivo <b>${esc(nombre)}</b> · hoja “${esc(ub.hoja)}”, ${ub.contenido ? "columnas detectadas <b>por su contenido</b> (CUM, precio y cantidad)" : `encabezado en la fila ${ub.fila + 1}`} · forma de pago: <b>${pago === "contado" ? "contado" : "crédito (90 días)"}</b>${pagoTxt ? ` (leída del archivo: “${esc(pagoTxt)}”)` : " (no venía en el archivo)"}.`;
   $("#kpis").innerHTML = kpiHtml([
     ["Líneas", fmt(n), "", `${reg} reguladas · ${sisN} con SISMED`],
     ["Sin observación", fmt(ok), ok / n >= .8 ? "ok" : "warn", pc(ok, n)],
@@ -302,7 +340,7 @@ function analizarOferta(nombre, hojas, ub){
   const sisL = L.filter(x => x.ref === "SISMED");
   $("#h2").textContent = "Margen sobre el SISMED (medicamentos no regulados)";
   chart("g2", {type:"bar", data:{labels:sisL.map(x => (x.desc || x.cum).slice(0, 22)), datasets:[{data:sisL.map(x => +x.dif.toFixed(1)), backgroundColor:sisL.map(x => css(COLOR[x.res] || "--c6")), borderRadius:3,
-      datalabels:{anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:(v, c) => `${pct(v)} · ${pesos(sisL[c.dataIndex].tarifa)}`}}]},
+      datalabels:{anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:v => pct(v)}}]},
     options:{layout:{padding:{top:22}}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => sisL[c[0].dataIndex].desc}}},
       scales:{y:{grace:"15%", ticks:{callback:v => v + " %"}}, x:{ticks:{font:{size:10}, maxRotation:40, minRotation:30}}}}});
   const banda = pago === "contado" ? `de contado la tolerancia es ±${tol} %` : `a crédito el rango viable es ${mMin} % a ${mMax} %`;
@@ -345,7 +383,7 @@ function analizarPqrs(nombre, hojas, ub){
   $("#h2").textContent = "Casos por mes y canal";
   chart("g2", {type:"bar", data:{labels:meses, datasets:cn.map((c, i) => ({label:c, backgroundColor:[css("--brand"), css("--accent"), css("--c4"), css("--c6")][i % 4],
       data:meses.map(mm => P.filter(x => x.canal === c && x.f && x.f.toISOString().slice(0, 7) === mm).length),
-      datalabels:{display:c2 => c2.dataset.data[c2.dataIndex] >= 3, color:"#fff", font:{weight:600, size:10.5}, textAlign:"center", formatter:(v, c2) => `${v}\n${pc(v, tot[c2.dataIndex])}`}}))},
+      datalabels:{display:c2 => c2.dataset.data[c2.dataIndex] >= 3, color:"#fff", font:{weight:600, size:10.5}, formatter:v => fmt(v)}}))},
     options:{scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}}}});
   const pico = meses[tot.indexOf(Math.max(...tot))];
   $("#n2").innerHTML = meses.length ? `El mes con más casos fue <b>${pico}</b> con ${Math.max(...tot)} (${pc(Math.max(...tot), n)} del total). Dentro de cada barra va el número y el % de ese mes que aporta cada canal.` : "";

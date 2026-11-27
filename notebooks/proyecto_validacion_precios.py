@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-CRM TECNOLOGÍAS EN SALUD · Validación de precios (Circular 022 + SISMED) y seguimiento de PQRS
-Autor: Ivan Santiago Herrera Baquero · Versión 5 (generado desde el notebook de Colab)
+CRM TECNOLOGÍAS EN SALUD · Validación de precios (Circular 022 + SISMED), seguimiento de PQRS y asistente de IA
+Autor: Ivan Santiago Herrera Baquero · Versión 6 (generado desde el notebook de Colab)
 
-Uso en Colab:  !python "/content/drive/MyDrive/proyecto_validacion_precios.py"   o pegar el contenido en una celda.
-Cada bloque "# %%" corresponde a una celda del notebook. Para publicar en GitHub, cambiar PUBLICAR = True (Paso 9).
+Uso en Colab:  !python "/content/drive/MyDrive/TECNOLOGIAS EN SALUD/proyecto_validacion_precios.py"   o pegar el contenido en una celda.
+Cada bloque "# %%" corresponde a una celda del notebook.
 """
 try:
     from IPython.display import display
@@ -696,17 +696,17 @@ def etiquetar_apilado(ax, tabla, horizontal=False, minimo=3):
     # número y % dentro de cada segmento; total y % del gran total al final de la barra
     tot = tabla.sum(axis=1); gran = tot.sum()
     for cont, col in zip(ax.containers, tabla.columns):
-        etiquetas = [f"{int(v)}\n{p(v, t)}" if v >= minimo else "" for v, t in zip(tabla[col], tot)]
+        etiquetas = [f"{int(v)}" if v >= minimo else "" for v, t in zip(tabla[col], tot)]
         ax.bar_label(cont, labels=etiquetas, label_type="center", color="white", fontsize=7 if len(tabla) > 4 else 7.5, fontweight="bold")
     for k, t in enumerate(tot):
-        if horizontal: ax.text(t, k, f"  {int(t)} · {p(t, gran)}", va="center", fontsize=8, fontweight="bold")
-        else: ax.text(k, t, f"{int(t)}\n{p(t, gran)}", ha="center", va="bottom", fontsize=8, fontweight="bold")
+        if horizontal: ax.text(t, k, f"  {int(t)}", va="center", fontsize=9, fontweight="bold")
+        else: ax.text(k, t, f"{int(t)}", ha="center", va="bottom", fontsize=9, fontweight="bold")
     (ax.set_xlim if horizontal else ax.set_ylim)(0, tot.max() * 1.25)
 
 def barras_h(ax, serie, color, total=None):
     total = total or serie.sum()
     b = ax.barh(serie.index, serie.values, color=color)
-    ax.bar_label(b, labels=[f" {int(v)} · {p(v, total)}" for v in serie.values], fontsize=8, fontweight="bold")
+    ax.bar_label(b, labels=[f" {int(v)}" for v in serie.values], fontsize=8.5, fontweight="bold")
     ax.set_xlim(0, serie.max() * 1.3)
 
 meses = sorted(pqr["MES"].unique())
@@ -717,7 +717,7 @@ fig, ax = plt.subplots(figsize=(8, 3.8))
 r = resumen.set_index("COMPRADOR")[["APROBADAS", "CON_OBSERVACIONES", "RECHAZADAS"]]
 r.plot(kind="barh", stacked=True, color=[VERDE, NARANJA, ROJO], ax=ax, legend=False)
 etiquetar_apilado(ax, r, horizontal=True, minimo=1)
-ax.set_title("Estado de las líneas ofertadas por comprador (número y % de cada comprador)"); ax.set_xlabel("Líneas"); ax.set_ylabel("")
+ax.set_title("Estado de las líneas ofertadas por comprador (número de líneas)"); ax.set_xlabel("Líneas"); ax.set_ylabel("")
 ax.legend(["Aprobadas", "Con observaciones", "Rechazadas"], fontsize=7.5, loc="lower right")
 peor = resumen.assign(t=resumen["RECHAZADAS"] / resumen["LINEAS"]).sort_values("t").iloc[-1]
 fig.subplots_adjust(bottom=0.30)
@@ -734,7 +734,7 @@ colores = {"Dentro del rango": VERDE, "Margen viable sobre SISMED (crédito)": "
            "Sin referencia: consultar SISMED": GRIS}
 rc.plot(kind="barh", stacked=True, color=[colores.get(c, GRIS) for c in rc.columns], ax=ax, legend=False)
 etiquetar_apilado(ax, rc, horizontal=True, minimo=2)
-ax.set_title("Cruce con la Circular 022 y el SISMED por comprador (número y % de cada comprador)"); ax.set_xlabel(""); ax.set_ylabel("")
+ax.set_title("Cruce con la Circular 022 y el SISMED por comprador (número de líneas)"); ax.set_xlabel(""); ax.set_ylabel("")
 ax.legend(rc.columns, fontsize=6.5, loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=3, frameon=False)
 fig.subplots_adjust(bottom=0.45)
 rcount = cruce["RESULTADO"].value_counts()
@@ -751,9 +751,10 @@ etiquetar_apilado(ax, t)
 ax.set_title("PQRS por mes: B2B comercial frente a dispensación"); ax.set_xlabel(""); ax.legend(["B2B comercial", "Dispensación"], fontsize=8, loc="upper left")
 fig.subplots_adjust(bottom=0.25)
 pico = t.sum(axis=1).idxmax()
-guardar_fig(fig, "pqr_mes_canal", f"{len(pqr)} PQRS: {len(B)} B2B comerciales ({p(len(B), len(pqr))}) y {len(Dsp)} de dispensación ({p(len(Dsp), len(pqr))}). "
-            f"El pico fue {pico} con {t.sum(axis=1).max()} casos ({p(t.loc[pico, 'B2B'], t.loc[pico].sum())} B2B). Las B2B pasaron de {t['B2B'].iloc[0]} en junio a "
-            f"{t.loc['2026-10', 'B2B']} en octubre por los ajustes de precio de la Circular 022. Noviembre tiene corte al día 20.")
+guardar_fig(fig, "pqr_mes_canal", f"Qué muestra: cuántas PQRS (quejas y solicitudes, no ventas) llegaron cada mes. Azul = B2B (compradores institucionales y equipos de licitaciones y convenios); "
+            f"naranja = dispensación (pacientes). Cifras: {len(pqr)} PQRS en total = {len(B)} B2B ({p(len(B), len(pqr))}) + {len(Dsp)} de dispensación ({p(len(Dsp), len(pqr))}). "
+            f"Mes con más casos: {pico}, con {t.sum(axis=1).max()} ({t.loc[pico, 'B2B']} B2B y {t.loc[pico, 'Dispensación']} de dispensación). Las B2B subieron de {t['B2B'].iloc[0]} en junio a "
+            f"{t.loc['2026-10', 'B2B']} en octubre por los ajustes de precio de la Circular 022. Noviembre tiene datos hasta el día 20.")
 
 # 4. B2B: mes por solicitante y categoría
 fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.2), gridspec_kw={"width_ratios": [1, 1.1]})
@@ -761,7 +762,7 @@ sb = B.groupby(["MES", "SOLICITANTE"]).size().unstack(fill_value=0)
 sb.columns = [c.replace("Usuario interno – ", "Interno: ") for c in sb.columns]
 sb.plot(kind="bar", stacked=True, color=[AZUL, "#4F8A8B", MORADO], ax=a1, rot=0, legend=False, width=0.8)
 etiquetar_apilado(a1, sb); a1.set_title("B2B por mes y tipo de solicitante"); a1.set_xlabel(""); a1.legend(sb.columns, fontsize=7, loc="upper left")
-barras_h(a2, B["CATEGORIA"].value_counts().sort_values(), AZUL); a2.set_title("B2B por categoría (número · % del B2B)")
+barras_h(a2, B["CATEGORIA"].value_counts().sort_values(), AZUL); a2.set_title("B2B por categoría (número de casos)")
 fig.subplots_adjust(bottom=0.25, wspace=0.55)
 cb = B["CATEGORIA"].value_counts(); internos = B["SOLICITANTE"].str.startswith("Usuario interno").sum()
 guardar_fig(fig, "pqr_b2b", f"De {len(B)} casos B2B, {internos} ({p(internos, len(B))}) los radicaron los equipos internos de licitaciones y convenios y "
@@ -772,10 +773,10 @@ guardar_fig(fig, "pqr_b2b", f"De {len(B)} casos B2B, {internos} ({p(internos, le
 fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.2), gridspec_kw={"width_ratios": [1, 1.1]})
 dm = Dsp.groupby("MES").size(); dt = Dsp[Dsp["TUTELA"]].groupby("MES").size().reindex(dm.index, fill_value=0)
 x = np.arange(len(dm)); b1 = a1.bar(x - .2, dm.values, .4, color=NARANJA, label="Casos"); b2 = a1.bar(x + .2, dt.values, .4, color=ROJO, label="Con tutela")
-a1.bar_label(b1, labels=[f"{v}\n{p(v, len(Dsp))}" for v in dm.values], fontsize=7.5, fontweight="bold")
-a1.bar_label(b2, labels=[f"{v}\n{p(v, n)}" if v else "" for v, n in zip(dt.values, dm.values)], fontsize=7, color=ROJO)
+a1.bar_label(b1, labels=[f"{v}" for v in dm.values], fontsize=8.5, fontweight="bold")
+a1.bar_label(b2, labels=[f"{v}" if v else "" for v in dt.values], fontsize=8, color=ROJO)
 a1.set_xticks(x, dm.index); a1.set_ylim(0, dm.max() * 1.3); a1.set_title("Dispensación por mes"); a1.legend(fontsize=7)
-barras_h(a2, Dsp["CATEGORIA"].value_counts().sort_values(), NARANJA); a2.set_title("Dispensación por categoría (número · % de dispensación)")
+barras_h(a2, Dsp["CATEGORIA"].value_counts().sort_values(), NARANJA); a2.set_title("Dispensación por categoría (número de casos)")
 fig.subplots_adjust(bottom=0.25, wspace=0.55)
 pend = cerradas[cerradas["CATEGORIA"] == "Entrega incompleta (pendientes)"]; p48 = (pend["DIAS_HABILES"] <= 2).sum()
 cd = Dsp["CATEGORIA"].value_counts()
@@ -1074,9 +1075,202 @@ else:
     print("Publicación desactivada. Cambia PUBLICAR = True para subir los resultados.")
 
 # %% [markdown]
+# ## Paso 10. Asistente de IA para leer cualquier documento
+#
+# Para archivos que no siguen ningún formato (cotizaciones con títulos raros, listas de precios, PDF de circulares o resoluciones, documentos en Word), este paso usa un modelo de lenguaje para **entender el documento** y devolver de forma estructurada:
+#
+# - qué tipo de documento es (oferta, lista de precios, norma, base de PQRS u otro);
+# - en qué hoja y fila están los datos, y qué columna es el **CUM**, la **tarifa**, la **cantidad**, el **precio máximo**, el código **MAPIPOS/CUPS** (si aparece) y la descripción;
+# - los **topes de regulación** que mencione (circular, precio máximo, fecha de vigencia) y los CUM con su precio cuando el documento es una norma o un PDF.
+#
+# Después, el cruce lo hace el código (no la IA): cada CUM se compara con la **Circular 022** y, si no está regulado, con el **SISMED**, aplicando las reglas de margen del Paso 1D. La IA solo lee; no inventa precios.
+#
+# **Cómo usarlo:** deja los documentos en la carpeta `TECNOLOGIAS EN SALUD/ia` de tu Drive y ejecuta la celda. Los resultados quedan en `salida/analisis_ia_<archivo>.xlsx`.
+#
+# **Modelo:** usa la IA integrada de Colab si tu cuenta la tiene. Si no, usa Gemini con una llave gratuita de Google AI Studio guardada en los Secrets de Colab (🔑) como `GOOGLE_API_KEY`, o Claude con `ANTHROPIC_API_KEY`. Si no hay ninguna, usa la lectura por contenido (sin IA), que reconoce las columnas por la forma de los datos.
+
+# %%
+import json, re, io
+CARPETA_IA = os.path.join(CARPETA_DRIVE, "ia") if EN_COLAB else "data/ia"
+os.makedirs(CARPETA_IA, exist_ok=True)
+EXT_IA = (".xlsx", ".xlsm", ".xls", ".xlsb", ".csv", ".txt", ".pdf", ".docx")
+if EN_COLAB:
+    subprocess.run([sys.executable, "-m", "pip", "-q", "install", "pdfplumber", "google-generativeai", "anthropic"])
+
+# ---------- 1. Modelo de lenguaje disponible
+def preparar_ia():
+    try:                                    # IA integrada de Colab
+        from google.colab import ai as colab_ai
+        colab_ai.generate_text("Responde solo: ok")
+        return "Colab AI", lambda prompt: colab_ai.generate_text(prompt)
+    except Exception:
+        pass
+    clave = lambda n: (__import__("google.colab", fromlist=["userdata"]).userdata.get(n) if EN_COLAB else os.environ.get(n))
+    try:                                    # Gemini (llave gratuita de Google AI Studio)
+        k = clave("GOOGLE_API_KEY")
+        if k:
+            import google.generativeai as genai
+            genai.configure(api_key=k); modelo = genai.GenerativeModel("gemini-1.5-flash")
+            return "Gemini", lambda prompt: modelo.generate_content(prompt).text
+    except Exception:
+        pass
+    try:                                    # Claude (Anthropic)
+        k = clave("ANTHROPIC_API_KEY")
+        if k:
+            import anthropic
+            cli = anthropic.Anthropic(api_key=k)
+            return "Claude", lambda prompt: cli.messages.create(model="claude-sonnet-4-5", max_tokens=4000,
+                                                              messages=[{"role": "user", "content": prompt}]).content[0].text
+    except Exception:
+        pass
+    return None, None
+
+NOMBRE_IA, preguntar = preparar_ia()
+print("Asistente:", NOMBRE_IA or "sin modelo de IA disponible → lectura por contenido")
+
+# ---------- 2. Contenido del documento como texto
+def contenido(ruta, filas=60):
+    ext = os.path.splitext(ruta)[1].lower()
+    if ext in (".xlsx", ".xlsm", ".xls", ".xlsb", ".csv"):
+        hojas = leer_hojas(ruta)
+        return "\n\n".join(f"### HOJA: {h} (fila 0 = primera fila)\n" +
+                           df.head(filas).fillna("").astype(str).to_csv(sep="|", header=False) for h, df in hojas.items()), hojas
+    if ext == ".pdf":
+        import pdfplumber
+        with pdfplumber.open(ruta) as pdf:
+            return "\n".join((pg.extract_text() or "") for pg in pdf.pages[:15]), None
+    if ext == ".docx":
+        from docx import Document as _D
+        d = _D(ruta)
+        texto = "\n".join(p.text for p in d.paragraphs)
+        for t in d.tables:
+            texto += "\n" + "\n".join("|".join(c.text for c in r.cells) for r in t.rows)
+        return texto, None
+    return open(ruta, encoding="utf-8", errors="ignore").read(), None
+
+INSTRUCCION = (
+    'Eres analista de precios de medicamentos en Colombia. Lee el documento y responde SOLO con un JSON válido, sin texto adicional:\n'
+    '{"tipo": "oferta|lista_precios|norma|pqrs|otro",\n'
+    ' "hoja": "nombre de la hoja con los datos o null",\n'
+    ' "fila_encabezado": número de la fila del encabezado (0 = primera fila) o null,\n'
+    ' "columnas": {"CUM": "texto exacto del encabezado o null", "TARIFA": "...", "CANTIDAD": "...", "DESCRIPCION": "...", "PRECIO_MAXIMO": "...", "MAPIPOS_CUPS": "..."},\n'
+    ' "forma_de_pago": "CONTADO|CRÉDITO|null",\n'
+    ' "topes_regulatorios": [{"norma": "p. ej. Circular 022 de 2026", "detalle": "qué regula", "vigencia": "fecha o null"}],\n'
+    ' "registros": [{"cum": "expediente-consecutivo", "descripcion": "...", "precio": número, "tipo_precio": "tarifa|precio_maximo|otro"}],\n'
+    ' "resumen": "una o dos frases en español"}\n'
+    'Reglas: el CUM tiene la forma número-número (p. ej. 19911481-1). En "registros" incluye solo CUM y precios que aparezcan literalmente en el texto (máximo 200); si el documento es una tabla con encabezado, deja "registros" vacío y llena "columnas". No inventes valores.\n'
+    'DOCUMENTO:\n'
+)
+
+def json_de(texto):
+    m = re.search(r"\{.*\}", texto, re.S)
+    return json.loads(m.group(0)) if m else {}
+
+# ---------- 3. Lectura por contenido (sin IA): columna con forma de CUM + columna numérica de precio
+RX_CUM = re.compile(r"^\s*(\d{4,9})\s*-\s*(\d{1,3})\s*$")
+def leer_por_contenido(hojas):
+    mejor = None
+    for h, df in hojas.items():
+        txt = df.astype(str)
+        conteo = {c: txt[c].str.match(RX_CUM).sum() for c in df.columns}
+        col_cum = max(conteo, key=conteo.get)
+        if conteo[col_cum] < 2: continue
+        datos = df[txt[col_cum].str.match(RX_CUM)]
+        cand = []
+        for c in df.columns:
+            if c == col_cum: continue
+            nums = datos[c].map(a_numero)
+            if nums.notna().mean() >= .6 and (nums > 0).mean() >= .6:
+                cand.append((c, nums.median(), (nums.dropna() % 1 == 0).mean()))
+        if not cand: continue
+        precio = max(cand, key=lambda x: x[1])[0]
+        cant = min([x for x in cand if x[0] != precio and x[2] > .9], key=lambda x: x[1], default=(None,))[0]
+        largos = {c: datos[c].astype(str).str.len().mean() for c in df.columns if c not in (col_cum, precio, cant)}
+        desc = max(largos, key=largos.get) if largos else None
+        t = pd.DataFrame({"CUM": datos[col_cum].astype(str).str.replace(" ", ""), "TARIFA": datos[precio].map(a_numero),
+                          "CANTIDAD": datos[cant].map(a_numero) if cant is not None else np.nan,
+                          "DESCRIPCION": datos[desc].astype(str) if desc is not None else ""})
+        if mejor is None or len(t) > len(mejor[1]): mejor = (h, t)
+    return mejor
+
+# ---------- 4. Cruce con Circular 022 y SISMED (reglas del Paso 1D)
+ref_pmv = pmv.drop_duplicates("CUM").set_index("CUM")["PMV_INSTITUCIONAL"]
+ref_sis = sismed.drop_duplicates("CUM").set_index("CUM")["PRECIO_SISMED"]
+def cruzar(t, forma_pago="CRÉDITO"):
+    t = t.copy()
+    t["CUM"] = t["CUM"].astype(str).str.upper().str.replace(" ", "")
+    t["PMV_CIRCULAR_022"] = t["CUM"].map(ref_pmv); t["PRECIO_SISMED"] = t["CUM"].map(ref_sis)
+    t["%_SOBRE_PMV"] = ((t["TARIFA"] / t["PMV_CIRCULAR_022"] - 1) * 100).round(1)
+    t["%_SOBRE_SISMED"] = np.where(t["PMV_CIRCULAR_022"].isna(), (t["TARIFA"] / t["PRECIO_SISMED"] - 1) * 100, np.nan).round(1)
+    contado = "CONTADO" in str(forma_pago).upper()
+    def regla(r):
+        if not RX_CUM.match(str(r.CUM)): return "CUM con formato inválido"
+        if pd.notna(r.PMV_CIRCULAR_022): return "Sobreprecio: supera el PMV" if r.TARIFA > r.PMV_CIRCULAR_022 else "Dentro del PMV"
+        if pd.notna(r.PRECIO_SISMED):
+            m = r["%_SOBRE_SISMED"]
+            if contado: return "Riesgo de especulación (reporte SIC)" if m > TOLERANCIA_CONTADO else ("Bajo SISMED: revisar margen" if m < -TOLERANCIA_CONTADO else "Alineado a SISMED (contado)")
+            return "Margen insuficiente para crédito" if m < MARGEN_MIN_CREDITO else ("Margen viable (crédito)" if m <= MARGEN_MAX_CREDITO else "Riesgo de especulación (reporte SIC)")
+        return "Sin referencia: consultar SISMED"
+    t["RESULTADO"] = t.apply(regla, axis=1)
+    return t
+
+# ---------- 5. Recorrer la carpeta
+resultados_ia = []
+for ruta in sorted(glob.glob(os.path.join(CARPETA_IA, "*"))):
+    if not ruta.lower().endswith(EXT_IA) or os.path.basename(ruta).startswith("~$"):
+        continue
+    nombre = os.path.basename(ruta); print(f"\n=== {nombre}")
+    texto, hojas = contenido(ruta)
+    info = {}
+    if preguntar:
+        try:
+            info = json_de(preguntar(INSTRUCCION + texto[:30000]))
+            print("IA:", info.get("resumen", ""), "| tipo:", info.get("tipo"))
+            for tope in info.get("topes_regulatorios", [])[:5]:
+                print("  Tope:", tope.get("norma"), "-", tope.get("detalle"), "-", tope.get("vigencia"))
+        except Exception as e:
+            print("La IA no respondió bien, se usa lectura por contenido:", str(e)[:120])
+    tabla = None
+    col = info.get("columnas") or {}
+    if hojas and info.get("hoja") in hojas and col.get("CUM") and (col.get("TARIFA") or col.get("PRECIO_MAXIMO")):
+        df = hojas[info["hoja"]]; f = int(info.get("fila_encabezado") or 0)
+        cab = [str(x).strip() for x in df.iloc[f].values]; datos = df.iloc[f + 1:].copy(); datos.columns = cab
+        pick = lambda k: datos[col[k]] if col.get(k) in datos.columns else np.nan
+        tabla = pd.DataFrame({"CUM": pick("CUM"), "TARIFA": pick("TARIFA") if col.get("TARIFA") else pick("PRECIO_MAXIMO"),
+                              "CANTIDAD": pick("CANTIDAD"), "DESCRIPCION": pick("DESCRIPCION")})
+        tabla["TARIFA"] = tabla["TARIFA"].map(a_numero); tabla["CANTIDAD"] = pd.to_numeric(tabla["CANTIDAD"].map(a_numero), errors="coerce")
+        tabla = tabla.dropna(subset=["CUM"]); tabla = tabla[tabla["CUM"].astype(str).str.strip() != ""]
+        metodo = f"IA ({NOMBRE_IA}): columnas"
+    elif info.get("registros"):
+        tabla = pd.DataFrame(info["registros"]).rename(columns={"cum": "CUM", "precio": "TARIFA", "descripcion": "DESCRIPCION"})
+        tabla["CANTIDAD"] = np.nan; tabla["TARIFA"] = pd.to_numeric(tabla["TARIFA"], errors="coerce")
+        metodo = f"IA ({NOMBRE_IA}): registros del texto"
+    elif hojas:
+        r = leer_por_contenido(hojas)
+        if r: tabla = r[1]; metodo = f"lectura por contenido (hoja {r[0]})"
+    if tabla is None or tabla.empty:
+        print("No se encontraron CUM con precio en este documento."); continue
+    res = cruzar(tabla, info.get("forma_de_pago") or "CRÉDITO")
+    destino = f"data/salida/analisis_ia_{os.path.splitext(nombre)[0]}.xlsx"
+    with pd.ExcelWriter(destino, engine="openpyxl") as xw:
+        res.to_excel(xw, sheet_name="CRUCE", index=False)
+        pd.DataFrame([{"ARCHIVO": nombre, "METODO": metodo, "TIPO": info.get("tipo"), "RESUMEN_IA": info.get("resumen"),
+                       "TOPES": json.dumps(info.get("topes_regulatorios", []), ensure_ascii=False)}]).to_excel(xw, sheet_name="LECTURA", index=False)
+    cuenta = res["RESULTADO"].value_counts()
+    print(f"Leído con {metodo}: {len(res)} líneas → " + "; ".join(f"{k}: {v}" for k, v in cuenta.items()))
+    print("Guardado en", destino)
+    resultados_ia.append(res.assign(ARCHIVO=nombre))
+
+if not resultados_ia:
+    print(f"\nDeja documentos en {CARPETA_IA} y vuelve a ejecutar esta celda.")
+else:
+    display(pd.concat(resultados_ia)[["ARCHIVO", "CUM", "DESCRIPCION", "TARIFA", "PMV_CIRCULAR_022", "PRECIO_SISMED", "%_SOBRE_PMV", "%_SOBRE_SISMED", "RESULTADO"]].head(30))
+
+# %% [markdown]
 # ## Conclusiones
 #
 # - La **lectura inteligente** permite consolidar archivos con nombres, hojas y encabezados distintos, y deja trazabilidad de qué se leyó y qué faltó.
 # - Cruzar cada CUM con la Circular 022 detecta en segundos las tarifas que superan el precio máximo institucional, el mismo tipo de hallazgo que hoy sanciona la SIC.
 # - El seguimiento de PQRS por severidad, canal y ente permite anticipar los riesgos que muestran los casos reales del mercado: pendientes, desabastecimiento y sobreprecios.
+# - El asistente de IA del Paso 10 lee documentos sin formato (incluidos PDF y Word) y deja el cruce listo para revisar.
 # - Basta con dejar nuevos archivos en `entrada` y volver a ejecutar para actualizar el Excel, el memorando, el informe HTML y el portal.
