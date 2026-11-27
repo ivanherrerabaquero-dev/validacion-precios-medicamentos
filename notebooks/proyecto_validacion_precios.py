@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-CRM TECNOLOGÍAS EN SALUD · Validación de precios (Circular 022 + SISMED), seguimiento de PQRS y asistente de IA
+CRM TECNOLOGÍAS EN SALUD · Validación de precios (Circular 022 + SISMED 2024/2019), seguimiento de PQRS y asistente de IA
 Autor: Ivan Santiago Herrera Baquero · Versión 6 (generado desde el notebook de Colab)
 
 Uso en Colab:  !python "/content/drive/MyDrive/TECNOLOGIAS EN SALUD/proyecto_validacion_precios.py"   o pegar el contenido en una celda.
@@ -262,7 +262,7 @@ display(catalogo[["CUM", "NOMBRE_CORTO", "PMV_INSTITUCIONAL", "PRECIO_PISO"]].he
 # - **Crédito a 90 días** (hay que cubrir nómina y logística mientras se cobra): margen viable sobre el SISMED entre **22 % y 32 %**. Menos de 22 %: margen insuficiente. Más de 32 %: riesgo de especulación.
 # - **Contado:** ajustarse al SISMED, con una tolerancia de ±5 %.
 #
-# > La base pública del SISMED en datos.gov.co (conjunto `3he6-m866`) llega hasta **junio de 2019**. El archivo `sismed_precios_institucionales.xlsx` tiene el promedio ponderado de venta institucional de abril a junio de 2019 por CUM. Si tienes acceso a una consulta más reciente, reemplázalo: el notebook lo reconoce por sus columnas.
+# > **Precio de referencia:** el archivo `sismed_precios_institucionales.xlsx` usa, por CUM, el precio de **2024** del Termómetro de Precios de Clicsalud (Ministerio de Salud, construido con reportes al SISMED; canal institucional, por presentación) y, cuando no existe, el de **2019** de la consulta pública del SISMED (`3he6-m866`, último periodo publicado). La columna `AÑO_REFERENCIA` indica cuál se usó. Si tienes una consulta más reciente, reemplaza el archivo: el notebook lo reconoce por sus columnas.
 
 # %%
 MARGEN_MIN_CREDITO = 22    # % mínimo sobre SISMED a crédito
@@ -271,7 +271,8 @@ TOLERANCIA_CONTADO = 5     # ± % sobre SISMED de contado
 
 SINONIMOS_SISMED = {
     "CUM": ["CUM", "CODIGO CUM", "EXPEDIENTE CONSECUTIVO"],
-    "PRECIO_SISMED": ["PRECIO SISMED PROMEDIO", "PRECIO SISMED", "VALOR PROMEDIO", "PRECIO PROMEDIO PONDERADO", "PRECIO PROMEDIO"],
+    "PRECIO_SISMED": ["PRECIO SISMED REFERENCIA", "PRECIO SISMED PROMEDIO", "PRECIO SISMED", "VALOR PROMEDIO", "PRECIO PROMEDIO PONDERADO", "PRECIO PROMEDIO"],
+    "ANO_REFERENCIA": ["ANO REFERENCIA", "ANIO REFERENCIA", "PERIODO REFERENCIA"],
     "PRINCIPIO_ACTIVO": ["PRINCIPIO ACTIVO", "DESCRIPCION ATC"],
     "DESCRIPCION_SISMED": ["DESCRIPCION COMERCIAL"],
     "ULTIMO_CORTE": ["ULTIMO CORTE", "FECHA CORTE"],
@@ -289,7 +290,8 @@ for f in sorted(glob.glob("data/referencia/*")):
         sismed["CUM"] = sismed["CUM"].astype(str).str.strip().str.upper()
         sismed["PRECIO_SISMED"] = pd.to_numeric(sismed["PRECIO_SISMED"], errors="coerce")
         sismed = sismed.dropna(subset=["PRECIO_SISMED"]).drop_duplicates("CUM")
-        print(f"SISMED leído de '{os.path.basename(f)}': {len(sismed):,} CUM · último corte {sismed['ULTIMO_CORTE'].max()}")
+        print(f"SISMED leído de '{os.path.basename(f)}': {len(sismed):,} CUM")
+        if sismed["ANO_REFERENCIA"].notna().any(): print(sismed["ANO_REFERENCIA"].value_counts().to_string())
         break
 else:
     print("No hay archivo del SISMED en 'referencia': los medicamentos no regulados quedarán como 'Sin referencia'.")
@@ -457,7 +459,7 @@ v = (consolidado
      .merge(pmv[["CUM", "MERCADO_RELEVANTE", "CANTIDAD_UNIDAD_MEDIDA", "UNIDAD_MEDIDA", "PMV_INSTITUCIONAL"]]
             .drop_duplicates("CUM"), on="CUM", how="left")
      .merge(catalogo[["CUM", "PRECIO_PISO"]], on="CUM", how="left")
-     .merge(sismed[["CUM", "PRECIO_SISMED"]], on="CUM", how="left"))
+     .merge(sismed[["CUM", "PRECIO_SISMED", "ANO_REFERENCIA"]], on="CUM", how="left"))
 T = "TARIFA PRESENTACION COMERCIAL"
 v["H_CUM_FORMATO"] = ~(v["CUM"].str.fullmatch(r"\d{4,9}-\d{1,3}") | v["CUM"].str.fullmatch(r"[0-9A-Z]{15}"))
 v["H_CUM_NO_EXISTE"] = ~v["H_CUM_FORMATO"] & v["PMV_INSTITUCIONAL"].isna() & v["PRECIO_SISMED"].isna()
@@ -517,7 +519,7 @@ resumen["PERDIDA_MES"] = resumen["COMPRADOR"].map(v.groupby("COMPRADOR")["PERDID
 
 cruce = v[["COMPRADOR", "TAMANO", "FORMA_PAGO", "CUM", "DESCRIPCION", "CANTIDAD ESTIMADA MES", T, "PMV_INSTITUCIONAL", "PRECIO_SISMED", "PRECIO_PISO",
            "DIF_VS_PMV_PCT", "PCT_GANANCIA_SOBRE_PMV", "PCT_SOBRE_SISMED", "PCT_MARGEN", "PCT_PERDIDA", "EXCEDENTE_MES", "PERDIDA_MES",
-           "RESULTADO_CRUCE"]].rename(columns={"FORMA_PAGO": "FORMA DE PAGO", "PRECIO_SISMED": "PRECIO SISMED", "PCT_SOBRE_SISMED": "% SOBRE SISMED",
+           "RESULTADO_CRUCE", "ANO_REFERENCIA"]].rename(columns={"FORMA_PAGO": "FORMA DE PAGO", "PRECIO_SISMED": "PRECIO SISMED", "ANO_REFERENCIA": "AÑO PRECIO SISMED", "PCT_SOBRE_SISMED": "% SOBRE SISMED",
     "TAMANO": "TAMAÑO", "DESCRIPCION": "MEDICAMENTO", "CANTIDAD ESTIMADA MES": "CANTIDAD MES", T: "TARIFA OFERTADA",
     "PMV_INSTITUCIONAL": "PMV CIRCULAR 022", "PRECIO_PISO": "PRECIO PISO (COSTO)", "DIF_VS_PMV_PCT": "% DIFERENCIA VS PMV",
     "PCT_GANANCIA_SOBRE_PMV": "% GANANCIA SOBRE PMV", "PCT_MARGEN": "% MARGEN", "PCT_PERDIDA": "% PÉRDIDA",
@@ -1025,7 +1027,7 @@ footer{{margin-top:36px;color:var(--mut);font-size:12.5px;border-top:1px solid v
 <h2>3. Resultado por comprador</h2>{tabla_html(t_res, num=("LINEAS", "% APROB.", "SOBRE PMV", "BAJO PISO"), dinero=("EXCEDENTE/MES",))}
 <div class="g" style="margin-top:12px">{fig_html("estado_lineas", "Estado de líneas")}</div>
 <h2>4. Cruce con la Circular 022 y el SISMED: sobreprecios, especulación y pérdidas</h2>
-<p>Regulados: la tarifa no puede superar el PMV institucional. No regulados: margen viable sobre el SISMED de {MARGEN_MIN_CREDITO} % a {MARGEN_MAX_CREDITO} % a crédito de 90 días y ±{TOLERANCIA_CONTADO} % de contado; por encima hay riesgo de reporte por especulación ante la SIC. Precios SISMED: último corte público (junio de 2019).</p>
+<p>Regulados: la tarifa no puede superar el PMV institucional. No regulados: margen viable sobre el SISMED de {MARGEN_MIN_CREDITO} % a {MARGEN_MAX_CREDITO} % a crédito de 90 días y ±{TOLERANCIA_CONTADO} % de contado; por encima hay riesgo de reporte por especulación ante la SIC. Precio SISMED: 2024 (Termómetro de Precios de Clicsalud) cuando existe; si no, 2019 (consulta pública del SISMED).</p>
 <p>Pérdida estimada por tarifas bajo el costo: <b>{pesos(kpis['perdida_mes'])}</b> al mes · Margen promedio de las ofertas: <b>{kpis['margen_promedio']} %</b>.</p>
 {tabla_html(t_cruce, num=("% GANANCIA SOBRE PMV", "% SOBRE SISMED", "% PÉRDIDA"), dinero=("TARIFA OFERTADA", "PMV CIRCULAR 022", "PRECIO SISMED"))}
 <div class="g" style="margin-top:12px">{fig_html("cruce_circular", "Cruce con la Circular 022 y el SISMED")}</div>
@@ -1038,7 +1040,7 @@ footer{{margin-top:36px;color:var(--mut);font-size:12.5px;border-top:1px solid v
 <h2>PQRS abiertas fuera de término</h2>{tabla_html(t_venc, num=("DÍAS HÁBILES",)) if len(t_venc) else "<p>No hay casos fuera de término.</p>"}
 <h2>6. Referentes del mercado (casos reales anonimizados)</h2><div class="casos">{casos_html}</div>
 <h2>7. Recomendaciones</h2><ol>{"".join(f"<li>{H.escape(x)}</li>" for x in recomendaciones)}</ol>
-<footer>Generado automáticamente desde Google Colab · PMV: tabla pública de la Circular 022 de 2026 (CNPMDM). Precios de referencia de no regulados: SISMED, datos.gov.co (3he6-m866), abril a junio de 2019. {EMPRESA}, compradores, tarifas y PQRS son ficticios; los casos del mercado son públicos y se presentan sin nombres de empresas. Elaboró: Ivan Santiago Herrera Baquero.</footer>
+<footer>Generado automáticamente desde Google Colab · PMV: tabla pública de la Circular 022 de 2026 (CNPMDM). Precios de referencia de no regulados: Termómetro de Precios de Clicsalud 2024 (datos.gov.co n4dj-8r7k) y SISMED 2019 (3he6-m866). {EMPRESA}, compradores, tarifas y PQRS son ficticios; los casos del mercado son públicos y se presentan sin nombres de empresas. Elaboró: Ivan Santiago Herrera Baquero.</footer>
 </div></body></html>"""
 open("docs/informe_ejecutivo.html", "w", encoding="utf-8").write(INFORME)
 shutil.copy("docs/informe_ejecutivo.html", "data/salida/informe_ejecutivo.html")
