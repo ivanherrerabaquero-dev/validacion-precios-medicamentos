@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 CRM TECNOLOGÍAS EN SALUD · Validación de precios (Circular 022 + SISMED 2024/2019), seguimiento de PQRS y asistente de IA
-Autor: Ivan Santiago Herrera Baquero · Versión 6 (generado desde el notebook de Colab)
+Autor: Ivan Santiago Herrera Baquero · Versión 6.1 (generado desde el notebook de Colab)
 
 Uso en Colab:  !python "/content/drive/MyDrive/TECNOLOGIAS EN SALUD/proyecto_validacion_precios.py"   o pegar el contenido en una celda.
 Cada bloque "# %%" corresponde a una celda del notebook.
@@ -295,6 +295,39 @@ for f in sorted(glob.glob("data/referencia/*")):
         break
 else:
     print("No hay archivo del SISMED en 'referencia': los medicamentos no regulados quedarán como 'Sin referencia'.")
+# Termómetro 2024 por expediente (todos los consecutivos): precio por unidad de dispensación
+termo = pd.DataFrame(columns=["EXPEDIENTE", "MEDICAMENTO_2024", "UNIDAD_DISPENSACION", "PRECIO_UNIDAD_REFERENCIA", "CANAL_REFERENCIA"])
+for f in sorted(glob.glob("data/referencia/*.xls*")):
+    try:
+        hojas_f = pd.ExcelFile(f).sheet_names
+    except Exception:
+        continue
+    h = next((x for x in hojas_f if "TERMOMETRO" in normalizar(x)), None)
+    if h:
+        termo = pd.read_excel(f, sheet_name=h, dtype={"EXPEDIENTE": str})
+        print(f"Termómetro 2024 por expediente: {len(termo):,} expedientes (hoja '{h}' de {os.path.basename(f)})")
+        break
+termo_idx = termo.drop_duplicates("EXPEDIENTE").set_index("EXPEDIENTE")
+
+PALABRAS_UNIDAD = r"(TABLETAS?|CAPSULAS?|COMPRIMIDOS?|GRAGEAS?|SOBRES?|AMPOLLAS?|VIALES?|UNIDADES?|FRASCOS?|BOLSAS?|JERINGAS?|OVULOS?|PARCHES?|SUPOSITORIOS?|PLUMAS?|CARTUCHOS?)"
+def unidades_en_texto(desc):
+    # unidades de dispensación que trae la presentación, según la descripción ('CAJA X 30 TABLETAS' = 30)
+    d = normalizar(desc)
+    m = re.search(r"\b(?:X|POR|CON|DE)\s*(\d{1,4})\s*" + PALABRAS_UNIDAD, d)
+    if m: return int(m.group(1))
+    if re.search(r"\b(?:X|POR|CON)\s*(?:1|UN|UNA)\s+(FRASCO|VIAL|AMPOLLA|BOLSA|JERINGA|INHALADOR|TUBO|PLUMA|CARTUCHO)", d): return 1
+    return None
+
+def precio_por_expediente(cum, desc):
+    # (precio por presentación o None, precio por unidad, unidad, medicamento) a partir del expediente del CUM
+    e = str(cum).split("-")[0]
+    if e not in termo_idx.index: return None, None, None, None
+    r = termo_idx.loc[e]; pu = float(r["PRECIO_UNIDAD_REFERENCIA"])
+    n = unidades_en_texto(desc)
+    if n is None and str(r["UNIDAD_DISPENSACION"]) in ("Frasco", "Vial", "Ampolla", "Bolsa", "Inhalador", "Jeringa Prellenada", "Tubo") and re.search(r"AMPOLLA|VIAL|FRASCO|BOLSA|JERINGA|INHALADOR|TUBO", normalizar(desc)):
+        n = 1
+    return (round(pu * n, 2) if n else None), pu, r["UNIDAD_DISPENSACION"], r["MEDICAMENTO_2024"]
+import re
 display(sismed.head(3))
 
 # %% [markdown]
@@ -461,6 +494,14 @@ v = (consolidado
      .merge(catalogo[["CUM", "PRECIO_PISO"]], on="CUM", how="left")
      .merge(sismed[["CUM", "PRECIO_SISMED", "ANO_REFERENCIA"]], on="CUM", how="left"))
 T = "TARIFA PRESENTACION COMERCIAL"
+# Si el CUM exacto no tiene PMV ni precio SISMED, se busca su expediente en el Termómetro 2024
+sin_ref = v["PMV_INSTITUCIONAL"].isna() & v["PRECIO_SISMED"].isna()
+fx = [precio_por_expediente(c, d) if s_ else (None, None, None, None) for c, d, s_ in zip(v["CUM"], v["DESCRIPCION"], sin_ref)]
+v["PRECIO_2024_UNIDAD_EXPEDIENTE"] = [x[1] for x in fx]
+usa = sin_ref & pd.Series([x[0] is not None for x in fx], index=v.index)
+v["PRECIO_SISMED"] = v["PRECIO_SISMED"].astype(float).where(~usa, pd.Series([np.nan if x[0] is None else x[0] for x in fx], index=v.index, dtype=float))
+v.loc[usa, "ANO_REFERENCIA"] = "2024 por expediente × unidades"
+print(f"Precio SISMED completado por expediente: {int(usa.sum())} líneas · con precio solo por unidad: {int((sin_ref & ~usa & v['PRECIO_2024_UNIDAD_EXPEDIENTE'].notna()).sum())}")
 v["H_CUM_FORMATO"] = ~(v["CUM"].str.fullmatch(r"\d{4,9}-\d{1,3}") | v["CUM"].str.fullmatch(r"[0-9A-Z]{15}"))
 v["H_CUM_NO_EXISTE"] = ~v["H_CUM_FORMATO"] & v["PMV_INSTITUCIONAL"].isna() & v["PRECIO_SISMED"].isna()
 v["H_DUPLICADO"] = v.duplicated(["COMPRADOR", "CUM", T], keep="first")
@@ -886,7 +927,8 @@ guardar("notas", NOTAS)
 # referencias para la página "Analizar un archivo" del portal (se procesa en el navegador)
 _p = pmv.dropna(subset=["PMV_INSTITUCIONAL"]).drop_duplicates("CUM")
 guardar("ref_pmv", {c: [round(float(x), 2), str(m)[:90]] for c, x, m in zip(_p["CUM"], _p["PMV_INSTITUCIONAL"], _p["MEDICAMENTO"])})
-guardar("ref_sismed", {c: [round(float(x), 2), str(a)[:40], str(d)[:70]] for c, x, a, d in zip(sismed["CUM"], sismed["PRECIO_SISMED"], sismed["PRINCIPIO_ACTIVO"], sismed["DESCRIPCION_SISMED"])})
+guardar("ref_sismed", {c: [round(float(x), 2), str(a)[:40], str(d)[:70], str(y)[:4] if pd.notna(y) else ""] for c, x, a, d, y in zip(sismed["CUM"], sismed["PRECIO_SISMED"], sismed["PRINCIPIO_ACTIVO"], sismed["DESCRIPCION_SISMED"], sismed["ANO_REFERENCIA"])})
+guardar("ref_termometro", {str(e): [round(float(p), 2), str(u), str(m)[:90], str(c)] for e, p, u, m, c in zip(termo["EXPEDIENTE"], termo["PRECIO_UNIDAD_REFERENCIA"], termo["UNIDAD_DISPENSACION"], termo["MEDICAMENTO_2024"], termo["CANAL_REFERENCIA"]) if pd.notna(p)})
 guardar("ref_catalogo", {c: round(float(x), 2) for c, x in zip(catalogo["CUM"], catalogo["PRECIO_PISO"])})
 print("Exportado:", RUTA_XLSX, "y docs/data/*.json")
 
@@ -1178,13 +1220,19 @@ def leer_por_contenido(hojas):
         col_cum = max(conteo, key=conteo.get)
         if conteo[col_cum] < 2: continue
         datos = df[txt[col_cum].str.match(RX_CUM)]
+        largos0 = {c: datos[c].astype(str).str.len().mean() for c in df.columns if c != col_cum}
         cand = []
         for c in df.columns:
             if c == col_cum: continue
             nums = datos[c].map(a_numero)
             if nums.notna().mean() >= .6 and (nums > 0).mean() >= .6:
                 cand.append((c, nums.median(), (nums.dropna() % 1 == 0).mean()))
-        if not cand: continue
+        if not cand:   # lista sin precio: consulta de referencias
+            desc = max(largos0, key=largos0.get) if largos0 else None
+            t = pd.DataFrame({"CUM": datos[col_cum].astype(str).str.replace(" ", ""), "TARIFA": np.nan, "CANTIDAD": np.nan,
+                              "DESCRIPCION": datos[desc].astype(str) if desc is not None else ""})
+            if mejor is None or len(t) > len(mejor[1]): mejor = (h, t)
+            continue
         precio = max(cand, key=lambda x: x[1])[0]
         cant = min([x for x in cand if x[0] != precio and x[2] > .9], key=lambda x: x[1], default=(None,))[0]
         largos = {c: datos[c].astype(str).str.len().mean() for c in df.columns if c not in (col_cum, precio, cant)}
@@ -1202,16 +1250,26 @@ def cruzar(t, forma_pago="CRÉDITO"):
     t = t.copy()
     t["CUM"] = t["CUM"].astype(str).str.upper().str.replace(" ", "")
     t["PMV_CIRCULAR_022"] = t["CUM"].map(ref_pmv); t["PRECIO_SISMED"] = t["CUM"].map(ref_sis)
+    fx = [precio_por_expediente(c, d) for c, d in zip(t["CUM"], t["DESCRIPCION"])]
+    t["PRECIO_2024_UNIDAD_EXPEDIENTE"] = [x[1] for x in fx]; t["MEDICAMENTO_TERMOMETRO"] = [x[3] for x in fx]
+    falta = t["PMV_CIRCULAR_022"].isna() & t["PRECIO_SISMED"].isna()
+    t["PRECIO_SISMED"] = t["PRECIO_SISMED"].astype(float).where(~falta, pd.Series([np.nan if x[0] is None else x[0] for x in fx], index=t.index, dtype=float))
     t["%_SOBRE_PMV"] = ((t["TARIFA"] / t["PMV_CIRCULAR_022"] - 1) * 100).round(1)
     t["%_SOBRE_SISMED"] = np.where(t["PMV_CIRCULAR_022"].isna(), (t["TARIFA"] / t["PRECIO_SISMED"] - 1) * 100, np.nan).round(1)
     contado = "CONTADO" in str(forma_pago).upper()
     def regla(r):
         if not RX_CUM.match(str(r.CUM)): return "CUM con formato inválido"
+        if pd.isna(r.TARIFA):   # lista sin precio: solo se informa la referencia
+            if pd.notna(r.PMV_CIRCULAR_022): return "Regulado: PMV Circular 022"
+            if pd.notna(r.PRECIO_SISMED): return "No regulado: precio SISMED por presentación"
+            if pd.notna(r.PRECIO_2024_UNIDAD_EXPEDIENTE): return "No regulado: precio 2024 por unidad (expediente)"
+            return "Sin referencia pública"
         if pd.notna(r.PMV_CIRCULAR_022): return "Sobreprecio: supera el PMV" if r.TARIFA > r.PMV_CIRCULAR_022 else "Dentro del PMV"
         if pd.notna(r.PRECIO_SISMED):
             m = r["%_SOBRE_SISMED"]
             if contado: return "Riesgo de especulación (reporte SIC)" if m > TOLERANCIA_CONTADO else ("Bajo SISMED: revisar margen" if m < -TOLERANCIA_CONTADO else "Alineado a SISMED (contado)")
             return "Margen insuficiente para crédito" if m < MARGEN_MIN_CREDITO else ("Margen viable (crédito)" if m <= MARGEN_MAX_CREDITO else "Riesgo de especulación (reporte SIC)")
+        if pd.notna(r.PRECIO_2024_UNIDAD_EXPEDIENTE): return "Solo precio por unidad 2024: indicar unidades por caja"
         return "Sin referencia: consultar SISMED"
     t["RESULTADO"] = t.apply(regla, axis=1)
     return t
@@ -1234,11 +1292,11 @@ for ruta in sorted(glob.glob(os.path.join(CARPETA_IA, "*"))):
             print("La IA no respondió bien, se usa lectura por contenido:", str(e)[:120])
     tabla = None
     col = info.get("columnas") or {}
-    if hojas and info.get("hoja") in hojas and col.get("CUM") and (col.get("TARIFA") or col.get("PRECIO_MAXIMO")):
+    if hojas and info.get("hoja") in hojas and col.get("CUM"):
         df = hojas[info["hoja"]]; f = int(info.get("fila_encabezado") or 0)
         cab = [str(x).strip() for x in df.iloc[f].values]; datos = df.iloc[f + 1:].copy(); datos.columns = cab
         pick = lambda k: datos[col[k]] if col.get(k) in datos.columns else np.nan
-        tabla = pd.DataFrame({"CUM": pick("CUM"), "TARIFA": pick("TARIFA") if col.get("TARIFA") else pick("PRECIO_MAXIMO"),
+        tabla = pd.DataFrame({"CUM": pick("CUM"), "TARIFA": pick("TARIFA") if col.get("TARIFA") else (pick("PRECIO_MAXIMO") if col.get("PRECIO_MAXIMO") else np.nan),
                               "CANTIDAD": pick("CANTIDAD"), "DESCRIPCION": pick("DESCRIPCION")})
         tabla["TARIFA"] = tabla["TARIFA"].map(a_numero); tabla["CANTIDAD"] = pd.to_numeric(tabla["CANTIDAD"].map(a_numero), errors="coerce")
         tabla = tabla.dropna(subset=["CUM"]); tabla = tabla[tabla["CUM"].astype(str).str.strip() != ""]

@@ -18,6 +18,8 @@ Los compradores institucionales (grande, mediano y pequeño) envían sus bases d
 
 ## Novedades
 
+- **Listas sin precio (consulta de referencias):** si el archivo solo trae CUM y nombre, la página de análisis y el asistente de IA informan para cada CUM si está regulado (Circular 022), su precio SISMED por presentación o, si no existe, el precio 2024 por unidad de su expediente (Termómetro de Precios). Marca los medicamentos de control especial (MCE).
+- **Tabla oficial de precios máximos actualizada:** 39.458 registros (datos.gov.co, 17/11/2026), incluidos los de circulares anteriores aún vigentes.
 - **Asistente de IA (Paso 10):** lee documentos sin formato (Excel con títulos raros, PDF de circulares, Word) que se dejan en la carpeta `ia` del Drive; detecta CUM, tarifas, precios máximos, códigos MAPIPOS/CUPS y topes regulatorios, y cruza cada CUM con la Circular 022 y el SISMED. Usa la IA de Colab, Gemini (`GOOGLE_API_KEY`) o Claude (`ANTHROPIC_API_KEY`); sin llave, lee por contenido.
 - **Gráficos más claros:** los conteos muestran solo el número; las proporciones y el cumplimiento, solo el %. La nota de cada gráfico explica qué representa cada cifra.
 - **Lectura por contenido en el portal:** la página de análisis reconoce el CUM, el precio y la cantidad por la forma de los datos aunque los encabezados no se parezcan.

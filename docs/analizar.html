@@ -135,9 +135,9 @@ $("#salir").onclick = () => { sesion(false); location.reload(); };
 let REF = null;
 function entrar(){
   $("#vLogin").classList.add("hidden"); $("#vApp").classList.remove("hidden");
-  if (!REF) Promise.all(["ref_pmv", "ref_sismed", "ref_catalogo"].map(n => fetch("data/" + n + ".json").then(r => { if (!r.ok) throw r; return r.json(); })))
-    .then(([pmv, sis, cat]) => { REF = {pmv, sis, cat};
-      $("#estadoRef").textContent = `Referencias listas: ${Object.keys(pmv).length.toLocaleString("es-CO")} CUM de la Circular 022 y ${Object.keys(sis).length.toLocaleString("es-CO")} CUM del SISMED.`; })
+  if (!REF) Promise.all(["ref_pmv", "ref_sismed", "ref_catalogo", "ref_termometro"].map(n => fetch("data/" + n + ".json").then(r => { if (!r.ok) throw r; return r.json(); })))
+    .then(([pmv, sis, cat, ter]) => { REF = {pmv, sis, cat, ter};
+      $("#estadoRef").textContent = `Referencias listas: ${Object.keys(pmv).length.toLocaleString("es-CO")} CUM de la Circular 022 y ${Object.keys(sis).length.toLocaleString("es-CO")} CUM del SISMED, más ${Object.keys(ter).length.toLocaleString("es-CO")} expedientes con precio 2024 por unidad.`; })
     .catch(() => $("#estadoRef").textContent = "No se pudieron cargar las tablas de referencia. Abre la página desde el portal publicado.");
 }
 if (sesion()) entrar();
@@ -224,6 +224,20 @@ function aNumero(v){
   s = s.replace(",", "."); const n = parseFloat(s); return isNaN(n) ? NaN : n;
 }
 
+// Termómetro 2024: precio por unidad para el expediente del CUM; unidades por caja leídas de la descripción
+function unidadesEnTexto(desc, unidad){
+  const d = normalizar(desc);
+  const m = d.match(/\b(?:X|POR|CON|DE)\s*(\d{1,4})\s*(TABLETAS?|CAPSULAS?|COMPRIMIDOS?|GRAGEAS?|SOBRES?|AMPOLLAS?|VIALES?|UNIDADES?|FRASCOS?|BOLSAS?|JERINGAS?|OVULOS?|PARCHES?|SUPOSITORIOS?|PLUMAS?|CARTUCHOS?)/);
+  if (m) return +m[1];
+  if (/\b(?:X|POR|CON)\s*(?:1|UN|UNA)\s+(FRASCO|VIAL|AMPOLLA|BOLSA|JERINGA|INHALADOR|TUBO|PLUMA|CARTUCHO)/.test(d)) return 1;
+  if (["Frasco","Vial","Ampolla","Bolsa","Inhalador","Jeringa Prellenada","Tubo"].includes(unidad) && /AMPOLLA|VIAL|FRASCO|BOLSA|JERINGA|INHALADOR|TUBO/.test(d)) return 1;
+  return null;
+}
+function porExpediente(cum, desc){
+  const t = REF.ter?.[String(cum).split("-")[0]]; if (!t) return null;
+  const n = unidadesEnTexto(desc, t[1]);
+  return {unidad:t[0], tipo:t[1], med:t[2], canal:t[3], n, presentacion: n ? t[0] * n : null};
+}
 const SIN_OFERTA = {
   CUM:["CUM","CODIGO CUM","CUM IUM","IUM","EXPEDIENTE CONSECUTIVO","COD CUM","CODIGO UNICO DE MEDICAMENTO","CODIGO","REGISTRO CUM"],
   MAPIS:["MAPIS","MAPIPOS","CODIGO MAPIPOS","CODIGO MAPIS","CUPS","CODIGO CUPS"],
@@ -265,6 +279,8 @@ function analizar({nombre, hojas}){
   if (pq) return analizarPqrs(nombre, hojas, pq);
   const of = encontrar(hojas, SIN_OFERTA, ["CUM", "TARIFA"]) || porContenido(hojas);
   if (of) return analizarOferta(nombre, hojas, of);
+  const solo = encontrar(hojas, {CUM:SIN_OFERTA.CUM, DESCRIPCION:SIN_OFERTA.DESCRIPCION}, ["CUM"]) || soloCum(hojas);
+  if (solo) return analizarConsulta(nombre, hojas, solo);
   $("#res").classList.remove("hidden"); $("#tRes").textContent = "No se reconoció el archivo";
   const muestra = Object.entries(hojas).map(([h, f]) => { const r = f.find(x => x && x.filter(v => v != null && String(v).trim() !== "").length >= 3) || [];
     return `Hoja “${esc(h)}”: ${r.filter(v => v != null).slice(0, 10).map(v => esc(String(v).slice(0, 30))).join(" | ") || "(vacía)"}`; }).join("<br>");
@@ -286,7 +302,9 @@ const kpiHtml = arr => arr.map(([l, v, c, d]) => `<div class="kpi ${c || ""}"><d
 // ---------------- oferta
 const COLOR = {"Sobreprecio: supera el PMV":"--bad", "Riesgo de especulación (reporte SIC)":"--bad", "Pérdida: tarifa bajo el costo":"--warn",
   "Margen insuficiente para crédito":"--warn", "Bajo SISMED: revisar margen":"--warn", "Dentro del PMV":"--ok", "Margen viable (crédito)":"--ok",
-  "Alineado a SISMED (contado)":"--ok", "Sin referencia: consultar SISMED":"--c6", "CUM con formato inválido":"--c4"};
+  "Alineado a SISMED (contado)":"--ok", "Sin referencia: consultar SISMED":"--c6", "CUM con formato inválido":"--c4",
+  "Solo precio por unidad 2024: indicar unidades por caja":"--c6", "Regulado: PMV Circular 022":"--brand", "No regulado: precio SISMED por presentación":"--accent",
+  "No regulado: precio 2024 por unidad (expediente)":"--c4", "Sin referencia pública":"--c6"};
 function analizarOferta(nombre, hojas, ub){
   document.querySelectorAll(".grid").forEach(g => g.style.display = "");
   const filas = hojas[ub.hoja], m = ub.mapa;
@@ -301,7 +319,10 @@ function analizarOferta(nombre, hojas, ub){
     if (!cum && isNaN(tarifa)) return;
     const cant = m.CANTIDAD != null ? aNumero(r[m.CANTIDAD]) : NaN, desc = m.DESCRIPCION != null ? String(r[m.DESCRIPCION] ?? "") : "";
     const valido = /^\d{4,9}-\d{1,3}$/.test(cum) || /^[0-9A-Z]{15}$/.test(cum);
-    const pmv = REF.pmv[cum]?.[0] ?? null, sis = REF.sis[cum]?.[0] ?? null, piso = REF.cat[cum] ?? null;
+    const pmv = REF.pmv[cum]?.[0] ?? null, piso = REF.cat[cum] ?? null;
+    let sis = REF.sis[cum]?.[0] ?? null, anio = REF.sis[cum]?.[3] || "";
+    const ex = (pmv == null && sis == null) ? porExpediente(cum, desc) : null;
+    if (ex && ex.presentacion){ sis = ex.presentacion; anio = "2024 (expediente × " + ex.n + ")"; }
     let res, ref = null, dif = null;
     if (!valido) res = "CUM con formato inválido";
     else if (pmv != null){ ref = "PMV Circular 022"; dif = (tarifa / pmv - 1) * 100;
@@ -309,10 +330,10 @@ function analizarOferta(nombre, hojas, ub){
     else if (sis != null){ ref = "SISMED"; dif = (tarifa / sis - 1) * 100;
       if (pago === "contado") res = dif > tol ? "Riesgo de especulación (reporte SIC)" : dif < -tol ? "Bajo SISMED: revisar margen" : "Alineado a SISMED (contado)";
       else res = dif < mMin ? "Margen insuficiente para crédito" : dif <= mMax ? "Margen viable (crédito)" : "Riesgo de especulación (reporte SIC)"; }
-    else res = "Sin referencia: consultar SISMED";
+    else res = ex ? "Solo precio por unidad 2024: indicar unidades por caja" : "Sin referencia: consultar SISMED";
     const cantOk = isNaN(cant) ? 0 : Math.max(0, cant);
     const exceso = res === "Sobreprecio: supera el PMV" ? (tarifa - pmv) * cantOk : res.startsWith("Riesgo de especulación") ? (tarifa - sis * (1 + (pago === "contado" ? tol : mMax) / 100)) * cantOk : 0;
-    L.push({fila: ub.fila + i + 2, cum, desc: desc || REF.pmv[cum]?.[1] || (REF.sis[cum] ? REF.sis[cum][1] + " - " + REF.sis[cum][2] : ""), cant, tarifa, pmv, sis, piso, ref, dif, res, exceso});
+    L.push({fila: ub.fila + i + 2, cum, desc: desc || REF.pmv[cum]?.[1] || (REF.sis[cum] ? REF.sis[cum][1] + " - " + REF.sis[cum][2] : "") || ex?.med || "", cant, tarifa, pmv, sis, piso, ref, dif, res, exceso, anio, unidad: ex ? ex.unidad : null, tipoU: ex ? ex.tipo : ""});
   });
   salida = {tipo:"oferta", nombre, comprador, pago, filas:L};
   const n = L.length, cuenta = {}; L.forEach(x => cuenta[x.res] = (cuenta[x.res] || 0) + 1);
@@ -347,10 +368,68 @@ function analizarOferta(nombre, hojas, ub){
   $("#n2").innerHTML = sisL.length ? `Cada barra es el % que la tarifa supera el precio SISMED (${banda}). Verde: dentro del rango; naranja: margen insuficiente o bajo SISMED; rojo: riesgo de especulación. ` +
     `${sisL.filter(x => /viable|Alineado/.test(x.res)).length} de ${sisL.length} líneas no reguladas están dentro del rango.` : "La oferta no tiene medicamentos no regulados con precio en el SISMED.";
   const pill = r => `<span class="pill ${COLOR[r] === "--ok" ? "p-ok" : COLOR[r] === "--bad" ? "p-bad" : COLOR[r] === "--warn" ? "p-warn" : "p-mut"}">${esc(r)}</span>`;
-  $("#tabla").innerHTML = `<thead><tr><th>Fila</th><th>CUM</th><th>Medicamento</th><th>Cantidad</th><th>Tarifa ofertada</th><th>Referencia</th><th>PMV Circular 022</th><th>Precio SISMED</th><th>% sobre referencia</th><th>Excedente/mes</th><th>Resultado</th></tr></thead><tbody>` +
+  $("#tabla").innerHTML = `<thead><tr><th>Fila</th><th>CUM</th><th>Medicamento</th><th>Cantidad</th><th>Tarifa ofertada</th><th>Referencia</th><th>PMV Circular 022</th><th>Precio SISMED</th><th>Año SISMED</th><th>Precio 2024 por unidad</th><th>% sobre referencia</th><th>Excedente/mes</th><th>Resultado</th></tr></thead><tbody>` +
     L.sort((a, b) => b.exceso - a.exceso).map(x => `<tr><td class="num">${x.fila}</td><td>${esc(x.cum)}</td><td class="wide">${esc(x.desc)}</td><td class="num">${isNaN(x.cant) ? "–" : fmt(x.cant)}</td>
-      <td class="num">${isNaN(x.tarifa) ? "–" : pesos(x.tarifa)}</td><td>${x.ref || "–"}</td><td class="num">${x.pmv != null ? pesos(x.pmv) : "–"}</td><td class="num">${x.sis != null ? pesos(x.sis) : "–"}</td>
-      <td class="num">${x.dif != null ? pct(x.dif) : "–"}</td><td class="num">${x.exceso > 0 ? pesos(x.exceso) : "–"}</td><td>${pill(x.res)}</td></tr>`).join("") + "</tbody>";
+      <td class="num">${isNaN(x.tarifa) ? "–" : pesos(x.tarifa)}</td><td>${x.ref || "–"}</td><td class="num">${x.pmv != null ? pesos(x.pmv) : "–"}</td><td class="num">${x.sis != null ? pesos(x.sis) : "–"}</td><td>${esc(x.anio || "")}</td>
+      <td class="num">${x.unidad != null ? pesos(x.unidad) + " / " + esc(x.tipoU.toLowerCase()) : "–"}</td><td class="num">${x.dif != null ? pct(x.dif) : "–"}</td><td class="num">${x.exceso > 0 ? pesos(x.exceso) : "–"}</td><td>${pill(x.res)}</td></tr>`).join("") + "</tbody>";
+}
+
+// ---------------- lista sin precio: consulta de referencias
+function soloCum(hojas){
+  let mejor = null;
+  for (const [hoja, filas] of Object.entries(hojas)){
+    const ancho = Math.max(0, ...filas.slice(0, 400).map(r => (r || []).length));
+    for (let c = 0; c < ancho; c++){
+      const n = filas.slice(0, 5000).filter(r => r && RX_CUM.test(String(r[c] ?? ""))).length;
+      if (n >= 2 && (!mejor || n > mejor.n)){
+        const primera = filas.findIndex(r => r && RX_CUM.test(String(r[c] ?? "")));
+        let desc = -1, maxLen = 0;
+        for (let k = 0; k < ancho; k++){ if (k === c) continue; const l = filas.slice(primera, primera + 50).reduce((a, r) => a + (r && typeof r[k] === "string" ? r[k].length : 0), 0); if (l > maxLen){ maxLen = l; desc = k; } }
+        mejor = {hoja, fila:Math.max(0, primera - 1), mapa:{CUM:c, ...(desc >= 0 ? {DESCRIPCION:desc} : {})}, n, contenido:true};
+      }
+    }
+  }
+  return mejor;
+}
+const CONS_COLOR = {"Regulado: PMV Circular 022":"--brand", "No regulado: precio SISMED por presentación":"--accent", "No regulado: precio 2024 por unidad (expediente)":"--c4", "Sin referencia pública":"--c6", "CUM con formato inválido":"--bad"};
+function analizarConsulta(nombre, hojas, ub){
+  document.querySelectorAll(".grid").forEach(g => g.style.display = "");
+  const filas = hojas[ub.hoja], m = ub.mapa, L = [];
+  filas.slice(ub.fila + 1).forEach((r, i) => {
+    if (!r) return; const cum = String(r[m.CUM] ?? "").toUpperCase().replace(/\s/g, ""); if (!cum) return;
+    const desc = m.DESCRIPCION != null ? String(r[m.DESCRIPCION] ?? "") : "";
+    const valido = RX_CUM.test(cum) || /^[0-9A-Z]{15}$/.test(cum);
+    const pmv = REF.pmv[cum] || null, sis = REF.sis[cum] || null, ex = (!pmv && !sis && valido) ? porExpediente(cum, desc) : null;
+    const res = !valido ? "CUM con formato inválido" : pmv ? "Regulado: PMV Circular 022" : sis ? "No regulado: precio SISMED por presentación" : ex ? "No regulado: precio 2024 por unidad (expediente)" : "Sin referencia pública";
+    L.push({fila:ub.fila + i + 2, cum, desc, pmv: pmv ? pmv[0] : null, pmvMed: pmv ? pmv[1] : "", sis: sis ? sis[0] : (ex && ex.presentacion) || null, anio: sis ? (sis[3] || "") : (ex && ex.presentacion ? "2024 (expediente × " + ex.n + ")" : ""),
+      unidad: ex ? ex.unidad : null, tipoU: ex ? ex.tipo : "", medRef: pmv ? pmv[1] : sis ? sis[1] + " - " + sis[2] : ex ? ex.med : "", mce: /^\s*MCE\b/i.test(desc), res});
+  });
+  salida = {tipo:"consulta", nombre, filas:L};
+  const n = L.length, cuenta = {}; L.forEach(x => cuenta[x.res] = (cuenta[x.res] || 0) + 1);
+  const reg = cuenta["Regulado: PMV Circular 022"] || 0, mce = L.filter(x => x.mce).length;
+  $("#res").classList.remove("hidden"); $("#tRes").textContent = "Consulta de referencias (lista sin precio)";
+  $("#lectura").innerHTML = `Archivo <b>${esc(nombre)}</b> · hoja “${esc(ub.hoja)}” · ${n} CUM. El archivo no trae tarifa, así que no se valida un precio ofertado: se informa, para cada CUM, si está regulado por la Circular 022 y qué precio de referencia tiene. Para validar, agrega una columna con la tarifa y vuelve a subirlo.`;
+  $("#kpis").innerHTML = kpiHtml([["CUM consultados", fmt(n)], ["Regulados (Circular 022)", fmt(reg), reg ? "warn" : "", pc(reg, n) + " · tienen precio máximo"],
+    ["Con precio SISMED", fmt((cuenta["No regulado: precio SISMED por presentación"] || 0) + (cuenta["No regulado: precio 2024 por unidad (expediente)"] || 0)), "", "por presentación o por unidad"],
+    ["Sin referencia pública", fmt(cuenta["Sin referencia pública"] || 0), (cuenta["Sin referencia pública"] || 0) ? "warn" : "ok"], ...(mce ? [["Control especial (MCE)", fmt(mce), "", "Fondo Nacional de Estupefacientes"]] : [])]);
+  const ent = Object.entries(cuenta).sort((a, b) => b[1] - a[1]);
+  $("#h1").textContent = "CUM por tipo de referencia (número)";
+  chart("g1", {type:"bar", data:{labels:ent.map(e => e[0]), datasets:[{data:ent.map(e => e[1]), backgroundColor:ent.map(e => css(CONS_COLOR[e[0]] || "--c6")), borderRadius:3, datalabels:lblFin(n)}]},
+    options:{indexAxis:"y", layout:{padding:{right:50}}, plugins:{legend:{display:false}}, scales:{y:{ticks:{autoSkip:false, font:{size:11}}}}}});
+  $("#n1").innerHTML = ent.map(([k, v]) => `<b>${esc(k)}</b>: ${v} (${pc(v, n)})`).join(" · ") + ". " +
+    (reg === 0 ? "Ninguno de estos CUM aparece en la Circular 022 ni en la tabla oficial de precios máximos (datos.gov.co, actualizada el 17/11/2026): no tienen precio máximo, así que el tope de referencia es el precio del SISMED. " : "") +
+    (mce ? `${mce} son de <b>control especial</b> (prefijo MCE): su control es sanitario (Fondo Nacional de Estupefacientes, Resolución 1478 de 2006), no necesariamente de precio.` : "");
+  const conU = L.filter(x => x.unidad != null).sort((a, b) => b.unidad - a.unidad).slice(0, 15);
+  $("#h2").textContent = "Precio 2024 por unidad de dispensación (SISMED, Termómetro de Precios)";
+  chart("g2", {type:"bar", data:{labels:conU.map(x => (x.desc || x.cum).replace(/^MCE-/, "").slice(0, 26)), datasets:[{data:conU.map(x => Math.round(x.unidad)), backgroundColor:css("--c4"), borderRadius:3,
+      datalabels:{anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:v => pesos(v)}}]},
+    options:{indexAxis:"y", layout:{padding:{right:70}}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => conU[c[0].dataIndex].medRef}}}, scales:{y:{ticks:{autoSkip:false, font:{size:10.5}}}}}});
+  $("#n2").innerHTML = conU.length ? `Precio de venta 2024 por ${esc((conU[0].tipoU || "unidad").toLowerCase())} reportado al SISMED para el expediente de cada CUM. Para obtener el precio por caja, multiplica por las unidades de la presentación; con ese valor, a crédito de 90 días el margen viable es de 22 % a 32 % y de contado ±5 %. ` +
+    `Más alto: ${esc(conU[0].desc)} con ${pesos(conU[0].unidad)} por unidad.` : "Ninguno de los CUM tiene precio 2024 por unidad.";
+  $("#tabla").innerHTML = `<thead><tr><th>Fila</th><th>CUM</th><th>Medicamento (archivo)</th><th>Referencia</th><th>PMV Circular 022</th><th>Precio SISMED presentación</th><th>Año</th><th>Precio 2024 por unidad</th><th>Medicamento en la referencia</th></tr></thead><tbody>` +
+    L.map(x => `<tr><td class="num">${x.fila}</td><td>${esc(x.cum)}</td><td class="wide">${esc(x.desc)}</td><td><span class="pill ${x.res.startsWith("Regulado") ? "p-warn" : x.res.startsWith("Sin") || x.res.startsWith("CUM") ? "p-mut" : "p-ok"}">${esc(x.res)}</span></td>
+      <td class="num">${x.pmv != null ? pesos(x.pmv) : "–"}</td><td class="num">${x.sis != null ? pesos(x.sis) : "–"}</td><td>${esc(x.anio)}</td>
+      <td class="num">${x.unidad != null ? pesos(x.unidad) + " / " + esc(x.tipoU.toLowerCase()) : "–"}</td><td class="wide">${esc(x.medRef)}</td></tr>`).join("") + "</tbody>";
 }
 
 // ---------------- PQRS
@@ -395,7 +474,10 @@ function analizarPqrs(nombre, hojas, ub){
 // ---------------- descarga
 $("#descargar").onclick = () => {
   if (!salida) return;
-  const filas = salida.tipo === "oferta"
+  const filas = salida.tipo === "consulta"
+    ? salida.filas.map(x => ({"FILA":x.fila, "CUM":x.cum, "MEDICAMENTO":x.desc, "REFERENCIA":x.res, "PMV CIRCULAR 022":x.pmv, "PRECIO SISMED PRESENTACION":x.sis, "AÑO":x.anio,
+        "PRECIO 2024 POR UNIDAD":x.unidad, "UNIDAD":x.tipoU, "MEDICAMENTO EN LA REFERENCIA":x.medRef}))
+    : salida.tipo === "oferta"
     ? salida.filas.map(x => ({"FILA":x.fila, "CUM":x.cum, "MEDICAMENTO":x.desc, "CANTIDAD":x.cant, "TARIFA OFERTADA":x.tarifa, "REFERENCIA":x.ref || "", "PMV CIRCULAR 022":x.pmv, "PRECIO SISMED":x.sis,
         "PRECIO PISO":x.piso, "% SOBRE REFERENCIA":x.dif != null ? +x.dif.toFixed(1) : null, "EXCEDENTE MES":Math.round(x.exceso) || 0, "RESULTADO":x.res}))
     : salida.filas.map(x => ({"RADICADO":x.rad, "FECHA":x.f ? x.f.toISOString().slice(0, 10) : "", "CANAL":x.canal, "CATEGORIA":x.cat, "ESTADO":x.estado, "DIAS HABILES":x.dias}));
