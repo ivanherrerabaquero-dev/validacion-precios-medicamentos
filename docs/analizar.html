@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analizar archivo CRM</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{--bg:#f4f5f2;--surface:#fff;--ink:#1b2230;--muted:#5d6675;--line:#dfe3e8;--brand:#1f4e79;--brand-soft:#e3ecf5;--accent:#d9822b;
+  --ok:#2f7d4f;--warn:#b86b12;--bad:#b4372f;--ok-soft:#e2f2e8;--warn-soft:#fbefdc;--bad-soft:#f8e1df;--c4:#8a6fb0;--c6:#8a8f98}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#10151c;--surface:#18202a;--ink:#e7ebf0;--muted:#9aa4b2;--line:#2a3542;--brand:#7fb0de;--brand-soft:#1e3044;--accent:#f2b356;
+  --ok:#6fcf97;--warn:#f2b356;--bad:#f08a80;--ok-soft:#183326;--warn-soft:#3a2c15;--bad-soft:#3d1f1d;--c4:#b9a2dd;--c6:#9aa4b2}}
+:root[data-theme="dark"]{--bg:#10151c;--surface:#18202a;--ink:#e7ebf0;--muted:#9aa4b2;--line:#2a3542;--brand:#7fb0de;--brand-soft:#1e3044;--accent:#f2b356;
+  --ok:#6fcf97;--warn:#f2b356;--bad:#f08a80;--ok-soft:#183326;--warn-soft:#3a2c15;--bad-soft:#3d1f1d;--c4:#b9a2dd;--c6:#9aa4b2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 "IBM Plex Sans",system-ui,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 56px}
+a{color:var(--brand)}
+h1{font-size:clamp(21px,3vw,27px);margin:6px 0 4px;font-weight:600}
+h2{font-size:17px;margin:22px 0 8px;font-weight:600}
+.sub{color:var(--muted);margin:0 0 14px;max-width:780px}
+.tag{display:inline-block;font:500 11.5px "IBM Plex Mono",monospace;color:var(--brand);background:var(--brand-soft);padding:3px 8px;border-radius:4px}
+button,select,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+button{cursor:pointer} button.pri{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:500}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.login{max-width:380px;margin:60px auto}
+.login label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+.login input{width:100%}
+.msg{font-size:13px;margin-top:10px;min-height:1.4em}
+.msg.bad{color:var(--bad)}
+.aviso{font-size:12.5px;color:var(--muted);margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:28px 16px;text-align:center;background:var(--surface);cursor:pointer}
+.drop.on{border-color:var(--brand);background:var(--brand-soft)}
+.params{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:12px 0}
+.params label{font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.params input{width:90px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0 14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.kpi .l{color:var(--muted);font-size:12.5px} .kpi .v{font:600 22px "IBM Plex Mono",monospace} .kpi .d{font-size:12px;color:var(--muted)}
+.kpi.ok .v{color:var(--ok)} .kpi.warn .v{color:var(--warn)} .kpi.bad .v{color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:12px}
+.chart{position:relative;height:300px}
+.nota{margin:10px 0 0;font-size:12.8px;background:var(--brand-soft);border-radius:6px;padding:8px 10px}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface);max-height:560px}
+table{border-collapse:collapse;width:100%;font-size:12.8px}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{position:sticky;top:0;background:var(--brand-soft);white-space:nowrap}
+td.num{text-align:right;font-family:"IBM Plex Mono",monospace;white-space:nowrap}
+td.wide{min-width:240px}
+.pill{font-size:11.5px;padding:2px 8px;border-radius:10px;font-weight:500;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-bad{background:var(--bad-soft);color:var(--bad)} .p-mut{background:var(--line);color:var(--muted)}
+.lectura{font-size:13px;color:var(--muted)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hidden{display:none}
+.reglas{font-size:13px;margin:0;padding-left:18px} .reglas li{margin:3px 0}
+@media (max-width:640px){.grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- LOGIN -->
+<div id="vLogin" class="login card">
+  <span class="tag">ACCESO RESTRINGIDO</span>
+  <h1>Analizar un archivo</h1>
+  <p class="sub" style="margin:0">CRM Tecnologías en Salud · validación de ofertas y PQRS.</p>
+  <form id="fLogin" autocomplete="on">
+    <label for="u">Usuario</label><input id="u" name="username" autocomplete="username" required>
+    <label for="p">Contraseña</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+    <div style="margin-top:14px;display:flex;gap:8px"><button class="pri" type="submit">Entrar</button><a href="index.html" style="align-self:center;font-size:13px">Volver al portal</a></div>
+    <div class="msg" id="mLogin"></div>
+  </form>
+  <p class="aviso">El archivo se analiza <b>dentro de tu navegador</b>: no se envía a ningún servidor. Este acceso es una protección básica de un sitio estático; no lo uses para información confidencial.</p>
+</div>
+
+<!-- APP -->
+<div id="vApp" class="hidden">
+  <div class="top">
+    <div><span class="tag">ANÁLISIS DE ARCHIVOS · SE PROCESA EN TU NAVEGADOR</span>
+      <h1>Analizar una oferta o una base de PQRS</h1></div>
+    <div style="display:flex;gap:8px"><a href="index.html" style="align-self:center">Portal</a><button id="salir" type="button">Cerrar sesión</button></div>
+  </div>
+  <p class="sub">Sube un Excel (.xlsx, .xls) o CSV. Se reconoce el tipo de archivo por sus columnas, aunque tengan otro nombre: una <b>oferta</b> (CUM y tarifa) se cruza con la Circular 022 y el SISMED; una <b>base de PQRS</b> (radicado, fecha y categoría) se resume por canal y categoría.</p>
+
+  <div class="card">
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Seleccionar archivo">
+      <b>Arrastra el archivo aquí</b> o haz clic para seleccionarlo<br><span class="lectura" id="estadoRef">Cargando tablas de referencia…</span>
+      <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv" class="hidden">
+    </div>
+    <div class="params">
+      <label>Forma de pago<select id="pago"><option value="auto">Detectar del archivo</option><option value="credito">Crédito (90 días)</option><option value="contado">Contado</option></select></label>
+      <label>Margen mínimo crédito (%)<input id="mMin" type="number" value="22" step="1"></label>
+      <label>Margen máximo crédito (%)<input id="mMax" type="number" value="32" step="1"></label>
+      <label>Tolerancia contado (%)<input id="tol" type="number" value="5" step="1"></label>
+      <button id="reanalizar" type="button" disabled>Volver a analizar</button>
+    </div>
+    <ul class="reglas">
+      <li><b>Medicamento regulado</b> (está en la Circular 022): la tarifa no puede superar el <b>PMV institucional</b>.</li>
+      <li><b>No regulado</b>: se compara con el precio publicado en el <b>SISMED</b>. A crédito de 90 días (nómina y logística a cargo), el margen viable es de <b>22 % a 32 %</b>; por encima hay riesgo de reporte por especulación ante la SIC. De contado conviene <b>ajustarse al SISMED</b>.</li>
+      <li>Sin CUM en ninguna de las dos tablas: consultar el precio en el SISMED antes de ofertar.</li>
+    </ul>
+  </div>
+
+  <div id="res" class="hidden">
+    <h2 id="tRes"></h2>
+    <p class="lectura" id="lectura"></p>
+    <div class="kpis" id="kpis"></div>
+    <div class="grid">
+      <div class="card"><h3 id="h1" style="margin:0 0 6px;font-size:14px"></h3><div class="chart"><canvas id="g1"></canvas></div><p class="nota" id="n1"></p></div>
+      <div class="card"><h3 id="h2" style="margin:0 0 6px;font-size:14px"></h3><div class="chart"><canvas id="g2"></canvas></div><p class="nota" id="n2"></p></div>
+    </div>
+    <div class="top" style="margin-top:18px"><h2 style="margin:0">Detalle</h2><button id="descargar" type="button">Descargar resultado en Excel</button></div>
+    <div class="tablewrap" style="margin-top:8px"><table id="tabla"></table></div>
+  </div>
+</div>
+</div>
+
+<script>
+// ---------------- acceso
+const HASH = "f9cd0453830dca5ac079422b7b9e7afaa6670647a4101055b027df4ee0998f0d";
+const $ = s => document.querySelector(s);
+async function sha256(t){ const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join(""); }
+function sesion(v){ try { if (v === undefined) return sessionStorage.getItem("crm_ok") === "1"; v ? sessionStorage.setItem("crm_ok", "1") : sessionStorage.removeItem("crm_ok"); } catch(e){ return false; } }
+$("#fLogin").onsubmit = async e => {
+  e.preventDefault();
+  const h = await sha256($("#u").value.trim().toLowerCase() + ":" + $("#p").value);
+  if (h === HASH){ sesion(true); entrar(); } else { $("#mLogin").textContent = "Usuario o contraseña incorrectos."; $("#mLogin").className = "msg bad"; }
+};
+$("#salir").onclick = () => { sesion(false); location.reload(); };
+let REF = null;
+function entrar(){
+  $("#vLogin").classList.add("hidden"); $("#vApp").classList.remove("hidden");
+  if (!REF) Promise.all(["ref_pmv", "ref_sismed", "ref_catalogo"].map(n => fetch("data/" + n + ".json").then(r => { if (!r.ok) throw r; return r.json(); })))
+    .then(([pmv, sis, cat]) => { REF = {pmv, sis, cat};
+      $("#estadoRef").textContent = `Referencias listas: ${Object.keys(pmv).length.toLocaleString("es-CO")} CUM de la Circular 022 y ${Object.keys(sis).length.toLocaleString("es-CO")} CUM del SISMED.`; })
+    .catch(() => $("#estadoRef").textContent = "No se pudieron cargar las tablas de referencia. Abre la página desde el portal publicado.");
+}
+if (sesion()) entrar();
+
+// ---------------- utilidades
+const fmt = n => new Intl.NumberFormat("es-CO").format(Math.round(n || 0));
+const pct = n => ((Math.round(n * 10) / 10) || 0).toLocaleString("es-CO") + " %";
+const pc = (a, b) => pct(b ? a / b * 100 : 0);
+const pesos = n => "$" + fmt(n);
+const millones = n => "$" + (n / 1e6).toLocaleString("es-CO", {maximumFractionDigits: 1}) + " M";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const normalizar = t => String(t ?? "").normalize("NFKD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+function ratio(a, b){ // similitud tipo SequenceMatcher simplificada (Dice sobre bigramas)
+  if (a === b) return 1; const bg = s => { const m = new Map(); for (let i = 0; i < s.length - 1; i++){ const k = s.slice(i, i + 2); m.set(k, (m.get(k) || 0) + 1); } return m; };
+  const A = bg(a), B = bg(b); let inter = 0; A.forEach((v, k) => inter += Math.min(v, B.get(k) || 0));
+  return (2 * inter) / Math.max(1, (a.length - 1) + (b.length - 1));
+}
+function puntaje(col, sin){
+  const a = normalizar(col), b = normalizar(sin); if (!a || !b) return 0; if (a === b) return 1;
+  const ta = new Set(a.split(" ")), tb = b.split(" ");
+  if (tb.every(w => ta.has(w))) return .90 + .05 * tb.length / ta.size;
+  return ratio(a, b) * .9;
+}
+function mapear(cols, sin, umbral = .78){
+  const cand = [];
+  for (const [est, lista] of Object.entries(sin)) cols.forEach((c, i) => { if (c == null || String(c).trim() === "") return;
+    const s = Math.max(...lista.map(x => puntaje(c, x))); if (s >= umbral) cand.push([s, est, i]); });
+  const mapa = {}, usadas = new Set();
+  cand.sort((a, b) => b[0] - a[0]).forEach(([s, est, i]) => { if (!(est in mapa) && !usadas.has(i)){ mapa[est] = i; usadas.add(i); } });
+  return mapa;
+}
+function encontrar(hojas, sin, oblig){
+  let mejor = null;
+  for (const [hoja, filas] of Object.entries(hojas)) for (let i = 0; i < Math.min(40, filas.length); i++){
+    const m = mapear(filas[i] || [], sin);
+    if (oblig.every(o => o in m) && (!mejor || Object.keys(m).length > Object.keys(mejor.mapa).length)) mejor = {hoja, fila:i, mapa:m};
+  }
+  return mejor;
+}
+function claveValor(filas, tope, claves){
+  let mejor = .9, val = null;
+  filas.slice(0, tope).forEach(r => { const v = (r || []).filter(x => x != null && String(x).trim() !== ""); if (v.length >= 2){
+    const s = Math.max(...claves.map(c => puntaje(v[0], c))); if (s >= mejor){ mejor = s + 1e-9; val = String(v[1]).trim(); } } });
+  return val;
+}
+function aNumero(v){
+  if (typeof v === "number") return v; if (v == null) return NaN;
+  let s = String(v).replace(/[^\d,.-]/g, "");
+  if ((s.match(/\./g) || []).length > 1 || (s.includes(".") && !s.includes(",") && s.split(".").pop().length === 3)) s = s.replace(/\./g, "");
+  s = s.replace(",", "."); const n = parseFloat(s); return isNaN(n) ? NaN : n;
+}
+
+const SIN_OFERTA = {
+  CUM:["CUM","CODIGO CUM","CUM IUM","IUM","EXPEDIENTE CONSECUTIVO","COD CUM"],
+  DESCRIPCION:["DESCRIPCION","MEDICAMENTO","PRODUCTO","NOMBRE DEL MEDICAMENTO"],
+  CANTIDAD:["CANTIDAD ESTIMADA MES","CANTIDAD","CANT MENSUAL","CANTIDAD MENSUAL","UNIDADES","VOLUMEN"],
+  TARIFA:["TARIFA PRESENTACION COMERCIAL","TARIFA","TARIFA UNITARIA","VALOR UNITARIO","VALOR UNITARIO OFERTADO","PRECIO","PRECIO UNITARIO","VALOR OFERTADO"],
+};
+const SIN_PQRS = {
+  RADICADO:["RADICADO","NUMERO DE RADICADO","ID PQRS"], FECHA:["FECHA RADICACION","FECHA DE RADICACION","FECHA RECIBIDO","FECHA DE RECEPCION"],
+  CATEGORIA:["CATEGORIA","MOTIVO","TIPOLOGIA","CAUSA"], CANAL:["CANAL","LINEA DE NEGOCIO"], ESTADO:["ESTADO","ESTADO DEL CASO"],
+  RESPUESTA:["FECHA RESPUESTA","FECHA DE RESPUESTA","FECHA DE CIERRE"], CIUDAD:["CIUDAD","MUNICIPIO"], SEVERIDAD:["SEVERIDAD","PRIORIDAD"],
+};
+
+// ---------------- carga del archivo
+let ultimo = null, salida = null, graficos = {};
+const drop = $("#drop");
+drop.onclick = () => $("#file").click();
+drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") $("#file").click(); };
+drop.ondragover = e => { e.preventDefault(); drop.classList.add("on"); };
+drop.ondragleave = () => drop.classList.remove("on");
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove("on"); if (e.dataTransfer.files[0]) leer(e.dataTransfer.files[0]); };
+$("#file").onchange = e => e.target.files[0] && leer(e.target.files[0]);
+$("#reanalizar").onclick = () => ultimo && analizar(ultimo);
+function leer(f){
+  if (!REF){ alertaRef(); return; }
+  const r = new FileReader();
+  r.onload = () => { const wb = XLSX.read(r.result, {type:"array", cellDates:true});
+    const hojas = {}; wb.SheetNames.forEach(n => { const ws = wb.Sheets[n];
+      if (ws["!ref"]){ const rg = XLSX.utils.decode_range(ws["!ref"]); rg.s.r = 0; rg.s.c = 0; ws["!ref"] = XLSX.utils.encode_range(rg); }  // contar filas desde A1
+      hojas[n] = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null, blankrows:true}); });
+    ultimo = {nombre:f.name, hojas}; $("#reanalizar").disabled = false; analizar(ultimo); };
+  r.readAsArrayBuffer(f);
+}
+function alertaRef(){ $("#estadoRef").textContent = "Espera a que terminen de cargar las tablas de referencia y vuelve a intentarlo."; }
+
+function analizar({nombre, hojas}){
+  const pq = encontrar(hojas, SIN_PQRS, ["RADICADO", "FECHA", "CATEGORIA"]);
+  if (pq) return analizarPqrs(nombre, hojas, pq);
+  const of = encontrar(hojas, SIN_OFERTA, ["CUM", "TARIFA"]);
+  if (of) return analizarOferta(nombre, hojas, of);
+  $("#res").classList.remove("hidden"); $("#tRes").textContent = "No se reconoció el archivo";
+  $("#lectura").textContent = "No encontré una fila con columnas de CUM y tarifa (oferta) ni de radicado, fecha y categoría (PQRS) en las primeras 40 filas de ninguna hoja.";
+  ["#kpis", "#tabla"].forEach(s => $(s).innerHTML = ""); document.querySelectorAll(".grid").forEach(g => g.style.display = "none");
+}
+
+function chart(id, cfg){
+  if (graficos[id]) graficos[id].destroy();
+  Chart.defaults.color = css("--muted"); Chart.defaults.borderColor = css("--line"); Chart.defaults.font.family = "IBM Plex Sans";
+  cfg.options = Object.assign({maintainAspectRatio:false, responsive:true}, cfg.options || {});
+  graficos[id] = new Chart(document.getElementById(id), cfg);
+}
+Chart.register(ChartDataLabels);
+const lblFin = total => ({display:c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:v => `${fmt(v)} · ${pc(v, total)}`});
+const kpiHtml = arr => arr.map(([l, v, c, d]) => `<div class="kpi ${c || ""}"><div class="l">${l}</div><div class="v">${v}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`).join("");
+
+// ---------------- oferta
+const COLOR = {"Sobreprecio: supera el PMV":"--bad", "Riesgo de especulación (reporte SIC)":"--bad", "Pérdida: tarifa bajo el costo":"--warn",
+  "Margen insuficiente para crédito":"--warn", "Bajo SISMED: revisar margen":"--warn", "Dentro del PMV":"--ok", "Margen viable (crédito)":"--ok",
+  "Alineado a SISMED (contado)":"--ok", "Sin referencia: consultar SISMED":"--c6", "CUM con formato inválido":"--c4"};
+function analizarOferta(nombre, hojas, ub){
+  document.querySelectorAll(".grid").forEach(g => g.style.display = "");
+  const filas = hojas[ub.hoja], m = ub.mapa;
+  const comprador = claveValor(filas, ub.fila, ["NOMBRE DEL COMPRADOR","COMPRADOR","CLIENTE","RAZON SOCIAL","ENTIDAD"]) || nombre.replace(/\.[^.]+$/, "");
+  const pagoTxt = claveValor(filas, ub.fila, ["FORMA DE PAGO","CONDICION DE PAGO","PLAZO DE PAGO"]);
+  let pago = $("#pago").value; if (pago === "auto") pago = pagoTxt && normalizar(pagoTxt).includes("CONTADO") ? "contado" : "credito";
+  const mMin = +$("#mMin").value, mMax = +$("#mMax").value, tol = +$("#tol").value;
+  const L = [];
+  filas.slice(ub.fila + 1).forEach((r, i) => {
+    if (!r || r.every(x => x == null || String(x).trim() === "")) return;
+    const cum = String(r[m.CUM] ?? "").toUpperCase().replace(/\s/g, ""), tarifa = aNumero(r[m.TARIFA]);
+    if (!cum && isNaN(tarifa)) return;
+    const cant = m.CANTIDAD != null ? aNumero(r[m.CANTIDAD]) : NaN, desc = m.DESCRIPCION != null ? String(r[m.DESCRIPCION] ?? "") : "";
+    const valido = /^\d{4,9}-\d{1,3}$/.test(cum) || /^[0-9A-Z]{15}$/.test(cum);
+    const pmv = REF.pmv[cum]?.[0] ?? null, sis = REF.sis[cum]?.[0] ?? null, piso = REF.cat[cum] ?? null;
+    let res, ref = null, dif = null;
+    if (!valido) res = "CUM con formato inválido";
+    else if (pmv != null){ ref = "PMV Circular 022"; dif = (tarifa / pmv - 1) * 100;
+      res = tarifa > pmv ? "Sobreprecio: supera el PMV" : (piso != null && tarifa < piso ? "Pérdida: tarifa bajo el costo" : "Dentro del PMV"); }
+    else if (sis != null){ ref = "SISMED"; dif = (tarifa / sis - 1) * 100;
+      if (pago === "contado") res = dif > tol ? "Riesgo de especulación (reporte SIC)" : dif < -tol ? "Bajo SISMED: revisar margen" : "Alineado a SISMED (contado)";
+      else res = dif < mMin ? "Margen insuficiente para crédito" : dif <= mMax ? "Margen viable (crédito)" : "Riesgo de especulación (reporte SIC)"; }
+    else res = "Sin referencia: consultar SISMED";
+    const cantOk = isNaN(cant) ? 0 : Math.max(0, cant);
+    const exceso = res === "Sobreprecio: supera el PMV" ? (tarifa - pmv) * cantOk : res.startsWith("Riesgo de especulación") ? (tarifa - sis * (1 + (pago === "contado" ? tol : mMax) / 100)) * cantOk : 0;
+    L.push({fila: ub.fila + i + 2, cum, desc: desc || REF.pmv[cum]?.[1] || (REF.sis[cum] ? REF.sis[cum][1] + " - " + REF.sis[cum][2] : ""), cant, tarifa, pmv, sis, piso, ref, dif, res, exceso});
+  });
+  salida = {tipo:"oferta", nombre, comprador, pago, filas:L};
+  const n = L.length, cuenta = {}; L.forEach(x => cuenta[x.res] = (cuenta[x.res] || 0) + 1);
+  const reg = L.filter(x => x.ref === "PMV Circular 022").length, sisN = L.filter(x => x.ref === "SISMED").length;
+  const riesgo = L.filter(x => /Sobreprecio|especulación/.test(x.res)), alerta = L.filter(x => /Pérdida|insuficiente|Bajo SISMED/.test(x.res));
+  const ok = L.filter(x => /Dentro|viable|Alineado/.test(x.res)).length, exc = riesgo.reduce((a, x) => a + x.exceso, 0);
+  $("#res").classList.remove("hidden");
+  $("#tRes").textContent = `Oferta de ${comprador}`;
+  $("#lectura").innerHTML = `Archivo <b>${esc(nombre)}</b> · hoja “${esc(ub.hoja)}”, encabezado en la fila ${ub.fila + 1} · forma de pago: <b>${pago === "contado" ? "contado" : "crédito (90 días)"}</b>${pagoTxt ? ` (leída del archivo: “${esc(pagoTxt)}”)` : " (no venía en el archivo)"}.`;
+  $("#kpis").innerHTML = kpiHtml([
+    ["Líneas", fmt(n), "", `${reg} reguladas · ${sisN} con SISMED`],
+    ["Sin observación", fmt(ok), ok / n >= .8 ? "ok" : "warn", pc(ok, n)],
+    ["En riesgo SIC", fmt(riesgo.length), riesgo.length ? "bad" : "ok", pc(riesgo.length, n) + " · sobre PMV o especulación"],
+    ["Excedente / mes", millones(exc), exc ? "bad" : "ok", "sobre el tope permitido"],
+    ["Revisar margen", fmt(alerta.length), alerta.length ? "warn" : "ok", pc(alerta.length, n)],
+    ["Sin referencia", fmt(cuenta["Sin referencia: consultar SISMED"] || 0), (cuenta["Sin referencia: consultar SISMED"] || 0) ? "warn" : "ok", "consultar SISMED"],
+  ]);
+  const ent = Object.entries(cuenta).sort((a, b) => b[1] - a[1]);
+  $("#h1").textContent = "Resultado del cruce por línea";
+  chart("g1", {type:"bar", data:{labels:ent.map(e => e[0]), datasets:[{data:ent.map(e => e[1]), backgroundColor:ent.map(e => css(COLOR[e[0]] || "--c6")), borderRadius:3, datalabels:lblFin(n)}]},
+    options:{indexAxis:"y", layout:{padding:{right:70}}, plugins:{legend:{display:false}}, scales:{y:{ticks:{autoSkip:false, font:{size:11}}}}}});
+  $("#n1").innerHTML = `De <b>${fmt(n)} líneas</b>, ${fmt(ok)} (${pc(ok, n)}) no tienen observación y <b>${riesgo.length} (${pc(riesgo.length, n)}) generan riesgo ante la SIC</b>: ` +
+    `${cuenta["Sobreprecio: supera el PMV"] || 0} superan el PMV de la Circular 022 y ${cuenta["Riesgo de especulación (reporte SIC)"] || 0} superan el margen permitido sobre el SISMED. ` +
+    `El excedente sobre el tope suma <b>${millones(exc)}</b> al mes.`;
+  const sisL = L.filter(x => x.ref === "SISMED");
+  $("#h2").textContent = "Margen sobre el SISMED (medicamentos no regulados)";
+  chart("g2", {type:"bar", data:{labels:sisL.map(x => (x.desc || x.cum).slice(0, 22)), datasets:[{data:sisL.map(x => +x.dif.toFixed(1)), backgroundColor:sisL.map(x => css(COLOR[x.res] || "--c6")), borderRadius:3,
+      datalabels:{anchor:"end", align:"end", color:() => css("--ink"), font:{weight:600, size:11}, formatter:(v, c) => `${pct(v)} · ${pesos(sisL[c.dataIndex].tarifa)}`}}]},
+    options:{layout:{padding:{top:22}}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => sisL[c[0].dataIndex].desc}}},
+      scales:{y:{grace:"15%", ticks:{callback:v => v + " %"}}, x:{ticks:{font:{size:10}, maxRotation:40, minRotation:30}}}}});
+  const banda = pago === "contado" ? `de contado la tolerancia es ±${tol} %` : `a crédito el rango viable es ${mMin} % a ${mMax} %`;
+  $("#n2").innerHTML = sisL.length ? `Cada barra es el % que la tarifa supera el precio SISMED (${banda}). Verde: dentro del rango; naranja: margen insuficiente o bajo SISMED; rojo: riesgo de especulación. ` +
+    `${sisL.filter(x => /viable|Alineado/.test(x.res)).length} de ${sisL.length} líneas no reguladas están dentro del rango.` : "La oferta no tiene medicamentos no regulados con precio en el SISMED.";
+  const pill = r => `<span class="pill ${COLOR[r] === "--ok" ? "p-ok" : COLOR[r] === "--bad" ? "p-bad" : COLOR[r] === "--warn" ? "p-warn" : "p-mut"}">${esc(r)}</span>`;
+  $("#tabla").innerHTML = `<thead><tr><th>Fila</th><th>CUM</th><th>Medicamento</th><th>Cantidad</th><th>Tarifa ofertada</th><th>Referencia</th><th>PMV Circular 022</th><th>Precio SISMED</th><th>% sobre referencia</th><th>Excedente/mes</th><th>Resultado</th></tr></thead><tbody>` +
+    L.sort((a, b) => b.exceso - a.exceso).map(x => `<tr><td class="num">${x.fila}</td><td>${esc(x.cum)}</td><td class="wide">${esc(x.desc)}</td><td class="num">${isNaN(x.cant) ? "–" : fmt(x.cant)}</td>
+      <td class="num">${isNaN(x.tarifa) ? "–" : pesos(x.tarifa)}</td><td>${x.ref || "–"}</td><td class="num">${x.pmv != null ? pesos(x.pmv) : "–"}</td><td class="num">${x.sis != null ? pesos(x.sis) : "–"}</td>
+      <td class="num">${x.dif != null ? pct(x.dif) : "–"}</td><td class="num">${x.exceso > 0 ? pesos(x.exceso) : "–"}</td><td>${pill(x.res)}</td></tr>`).join("") + "</tbody>";
+}
+
+// ---------------- PQRS
+function fecha(v){ if (v == null || String(v).trim() === "") return null; if (v instanceof Date) return v; if (typeof v === "number") return new Date(Math.round((v - 25569) * 864e5)); const d = new Date(v); return isNaN(d) ? null : d; }
+const FESTIVOS = new Set(["2025-01-01","2025-01-06","2025-03-24","2025-04-17","2025-04-18","2025-05-01","2025-06-02","2025-06-23","2025-06-30","2025-07-20","2025-08-07","2025-08-18","2025-10-13","2025-11-03","2025-11-17","2025-12-08","2025-12-25",
+  "2026-01-01","2026-01-12","2026-03-23","2026-04-02","2026-04-03","2026-05-01","2026-05-18","2026-06-08","2026-06-15","2026-06-29","2026-07-20","2026-08-07","2026-08-17","2026-10-12","2026-11-02","2026-11-16","2026-12-08","2026-12-25"]);
+function habiles(a, b){ let n = 0; const d = new Date(a); while (d < b){ d.setDate(d.getDate() + 1); const w = d.getDay(); if (w && w < 6 && !FESTIVOS.has(d.toISOString().slice(0, 10))) n++; } return n; }
+function analizarPqrs(nombre, hojas, ub){
+  document.querySelectorAll(".grid").forEach(g => g.style.display = "");
+  const filas = hojas[ub.hoja], m = ub.mapa, hoy = new Date();
+  const P = filas.slice(ub.fila + 1).filter(r => r && r[m.RADICADO] != null).map(r => {
+    const f = fecha(r[m.FECHA]), fr = m.RESPUESTA != null ? fecha(r[m.RESPUESTA]) : null;
+    return {rad:r[m.RADICADO], f, fr, cat:String(r[m.CATEGORIA] ?? "Sin categoría"), canal:m.CANAL != null ? String(r[m.CANAL] ?? "Sin canal") : "Sin canal",
+      estado:m.ESTADO != null ? String(r[m.ESTADO] ?? "") : "", dias:f ? habiles(f, fr || hoy) : null, abierta:!fr};
+  });
+  salida = {tipo:"pqrs", nombre, filas:P};
+  const n = P.length, cer = P.filter(x => !x.abierta), op = cer.filter(x => x.dias <= 15).length, venc = P.filter(x => x.abierta && x.dias > 15).length;
+  const canales = {}; P.forEach(x => canales[x.canal] = (canales[x.canal] || 0) + 1);
+  $("#res").classList.remove("hidden"); $("#tRes").textContent = "Base de PQRS";
+  $("#lectura").innerHTML = `Archivo <b>${esc(nombre)}</b> · hoja “${esc(ub.hoja)}”, encabezado en la fila ${ub.fila + 1} · ${fmt(n)} casos. Días hábiles con festivos de Colombia 2025 y 2026, contados hasta hoy para los casos abiertos.`;
+  $("#kpis").innerHTML = kpiHtml([["PQRS", fmt(n)], ...Object.entries(canales).map(([k, v]) => [k, fmt(v), "", pc(v, n) + " del total"]),
+    ["Oportunidad ≤ 15 días", pc(op, cer.length), op / Math.max(1, cer.length) >= .95 ? "ok" : "warn", `${op} de ${cer.length} cerradas`], ["Abiertas fuera de término", fmt(venc), venc ? "bad" : "ok"]]);
+  const cats = Object.entries(P.reduce((a, x) => (a[x.cat] = (a[x.cat] || 0) + 1, a), {})).sort((a, b) => b[1] - a[1]).slice(0, 12);
+  $("#h1").textContent = "Casos por categoría";
+  chart("g1", {type:"bar", data:{labels:cats.map(c => c[0].slice(0, 28)), datasets:[{data:cats.map(c => c[1]), backgroundColor:css("--brand"), borderRadius:3, datalabels:lblFin(n)}]},
+    options:{indexAxis:"y", layout:{padding:{right:70}}, plugins:{legend:{display:false}}, scales:{y:{ticks:{autoSkip:false, font:{size:11}}}}}});
+  $("#n1").innerHTML = cats.length ? `La categoría principal es <b>${esc(cats[0][0])}</b> con ${cats[0][1]} casos (${pc(cats[0][1], n)}). Las tres primeras suman ${pc(cats.slice(0, 3).reduce((a, c) => a + c[1], 0), n)}.` : "";
+  const meses = [...new Set(P.filter(x => x.f).map(x => x.f.toISOString().slice(0, 7)))].sort(), cn = Object.keys(canales);
+  const tot = meses.map(mm => P.filter(x => x.f && x.f.toISOString().slice(0, 7) === mm).length);
+  $("#h2").textContent = "Casos por mes y canal";
+  chart("g2", {type:"bar", data:{labels:meses, datasets:cn.map((c, i) => ({label:c, backgroundColor:[css("--brand"), css("--accent"), css("--c4"), css("--c6")][i % 4],
+      data:meses.map(mm => P.filter(x => x.canal === c && x.f && x.f.toISOString().slice(0, 7) === mm).length),
+      datalabels:{display:c2 => c2.dataset.data[c2.dataIndex] >= 3, color:"#fff", font:{weight:600, size:10.5}, textAlign:"center", formatter:(v, c2) => `${v}\n${pc(v, tot[c2.dataIndex])}`}}))},
+    options:{scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}}}});
+  const pico = meses[tot.indexOf(Math.max(...tot))];
+  $("#n2").innerHTML = meses.length ? `El mes con más casos fue <b>${pico}</b> con ${Math.max(...tot)} (${pc(Math.max(...tot), n)} del total). Dentro de cada barra va el número y el % de ese mes que aporta cada canal.` : "";
+  $("#tabla").innerHTML = `<thead><tr><th>Radicado</th><th>Fecha</th><th>Canal</th><th>Categoría</th><th>Estado</th><th>Días hábiles</th></tr></thead><tbody>` +
+    P.sort((a, b) => (b.abierta && b.dias > 15) - (a.abierta && a.dias > 15)).slice(0, 500).map(x => `<tr><td>${esc(x.rad)}</td><td>${x.f ? x.f.toISOString().slice(0, 10) : "–"}</td><td>${esc(x.canal)}</td><td>${esc(x.cat)}</td>
+      <td><span class="pill ${x.abierta && x.dias > 15 ? "p-bad" : x.abierta ? "p-warn" : "p-ok"}">${esc(x.estado || (x.abierta ? "Abierta" : "Cerrada"))}</span></td><td class="num">${x.dias ?? "–"}</td></tr>`).join("") + "</tbody>";
+}
+
+// ---------------- descarga
+$("#descargar").onclick = () => {
+  if (!salida) return;
+  const filas = salida.tipo === "oferta"
+    ? salida.filas.map(x => ({"FILA":x.fila, "CUM":x.cum, "MEDICAMENTO":x.desc, "CANTIDAD":x.cant, "TARIFA OFERTADA":x.tarifa, "REFERENCIA":x.ref || "", "PMV CIRCULAR 022":x.pmv, "PRECIO SISMED":x.sis,
+        "PRECIO PISO":x.piso, "% SOBRE REFERENCIA":x.dif != null ? +x.dif.toFixed(1) : null, "EXCEDENTE MES":Math.round(x.exceso) || 0, "RESULTADO":x.res}))
+    : salida.filas.map(x => ({"RADICADO":x.rad, "FECHA":x.f ? x.f.toISOString().slice(0, 10) : "", "CANAL":x.canal, "CATEGORIA":x.cat, "ESTADO":x.estado, "DIAS HABILES":x.dias}));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), "ANALISIS");
+  XLSX.writeFile(wb, "analisis_" + salida.nombre.replace(/\.[^.]+$/, "") + ".xlsx");
+};
+</script>
+</body>
+</html>

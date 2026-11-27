@@ -18,6 +18,10 @@ Los compradores institucionales (grande, mediano y pequeño) envían sus bases d
 
 ## Novedades
 
+- **SISMED para medicamentos no regulados:** si un CUM no está en la Circular 022, se compara con el precio de venta publicado en el SISMED. A crédito de 90 días el margen viable es de 22 % a 32 %; de contado, ±5 %. Por encima se marca **riesgo de especulación** (posible reporte ante la SIC). La forma de pago se lee del encabezado de cada oferta. La base pública del SISMED en datos.gov.co llega a junio de 2019.
+- **Analizar un archivo (con usuario y contraseña):** página  del portal donde se sube una oferta o una base de PQRS y se recibe el análisis con gráficos, notas y descarga en Excel. El archivo se procesa en el navegador; el acceso es una protección básica de un sitio estático.
+- **PQRS separadas:** pestañas distintas para **PQRS B2B comercial** y **PQRS dispensación**, además de una vista de gestión conjunta.
+- **Gráficos con número, % y nota:** cada gráfico del portal, del informe HTML y del memorando muestra el valor y el porcentaje, con una nota que explica las cifras.
 - **Sin datos aleatorios:** el notebook solo lee los Excel de Drive (ofertas de los 3 compradores, base de PQRS y catálogo con precio piso). Si cambias un valor y vuelves a ejecutar, cambian los resultados.
 - **Cruce con la Circular 022:** por cada línea muestra tarifa ofertada, PMV de la Circular 022, % de ganancia sobre el PMV, precio piso (costo), % de margen y % de pérdida cuando la tarifa queda bajo el costo (hoja `CRUCE_CIRCULAR_022`).
 - **Lectura inteligente:** reconoce columnas aunque cambien de nombre (`Código CUM`, `Valor unitario ofertado`, `cum/ium`, `precio`…), busca el encabezado en cualquier hoja y fila, y lee cualquier archivo `.xlsx`, `.xls`, `.xlsb` o `.csv` sin importar su nombre. Deja un reporte de lectura.
@@ -71,10 +75,11 @@ Ej.: IRBESARTÁN 150 mg x 25 tabletas: tarifa $20.143 vs PMV $17.250  →  +16,8
 
 | Indicador | Valor |
 |---|---|
-| Líneas validadas | 77 |
-| Aprobadas sin observaciones | 71,4 % |
+| Líneas validadas | 87 |
+| Aprobadas sin observaciones | 66,7 % |
 | Líneas sobre el PMV | 6 |
-| Excedente estimado sobre PMV | $25,1 millones/mes |
+| Líneas no reguladas con riesgo de especulación (SISMED) | 3 |
+| Excedente sobre PMV o tope SISMED | $25,6 millones/mes |
 | Líneas con pérdida (bajo el costo) | 5 · $12,4 millones/mes |
 | Margen promedio de las ofertas | 13,7 % |
 | PQRS recibidas | 440 |
@@ -98,7 +103,7 @@ Ej.: IRBESARTÁN 150 mg x 25 tabletas: tarifa $20.143 vs PMV $17.250  →  +16,8
 
 ## Cómo ejecutarlo
 
-1. Sube a tu Drive, carpeta `TECNOLOGIAS EN SALUD/entrada`, las 3 ofertas y `base_pqrs_2026.xlsx`; y a `referencia`, la tabla de la Circular 022 y `catalogo_empresa.xlsx` (están en `data/` de este repositorio).
+1. Sube a tu Drive, carpeta `TECNOLOGIAS EN SALUD/entrada`, las 3 ofertas y `base_pqrs_2026.xlsx`; y a `referencia`, la tabla de la Circular 022, `catalogo_empresa.xlsx` y `sismed_precios_institucionales.xlsx` (están en `data/` de este repositorio).
 2. Abre el notebook con el botón **Abrir en Colab**.
 3. Ejecuta las celdas en orden (*Entorno de ejecución → Ejecutar todas*).
 4. Opcional: cuando la Comisión publique una nueva versión de la tabla, súbela como `data/referencia/circular_oficial_nueva.xlsb` y ejecuta el Paso 2B.
@@ -112,6 +117,8 @@ Python · pandas · NumPy · openpyxl · python-docx · Matplotlib · HTML/JavaS
 
 - Circular 022 de 2026, Comisión Nacional de Precios de Medicamentos y Dispositivos Médicos: precios máximos de venta por presentación comercial, vigentes desde el 19 de agosto de 2026.
 - Ley 1755 de 2015 (derecho de petición y términos de respuesta).
+- SISMED, Ministerio de Salud: consulta pública de precios de medicamentos (datos.gov.co, conjunto 3he6-m866).
+- Ley 1480 de 2011 (Estatuto del Consumidor) y vigilancia de la SIC sobre precios.
 
 ## Autor
 

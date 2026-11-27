@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <style>
 :root{
   --bg:#f4f5f2; --surface:#fff; --ink:#1b2230; --muted:#5d6675; --line:#dfe3e8;
@@ -92,6 +93,13 @@ td.wide{min-width:260px}
 .links{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
 .links a{color:var(--brand);text-decoration:none;border:1px solid var(--line);background:var(--surface);padding:8px 12px;border-radius:6px}
 footer{margin-top:36px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+.nota{margin:10px 0 0;font-size:12.8px;line-height:1.5;background:var(--brand-soft);border-radius:6px;padding:8px 10px}
+.nota b{font-weight:600}
+.bloque{border:1px solid var(--line);border-top:4px solid var(--brand);border-radius:10px;padding:14px;margin:16px 0;background:color-mix(in srgb, var(--surface) 55%, transparent)}
+.bloque.disp{border-top-color:var(--accent)}
+.bloque>h2{margin:0 0 4px}
+.bloque .lead{margin-bottom:8px}
+.vacio{color:var(--muted);font-size:13px}
 .err{background:var(--bad-soft);color:var(--bad);padding:12px;border-radius:6px;display:none}
 @media (max-width:640px){ .grid,.grid.three,.split{grid-template-columns:minmax(0,1fr)} .chart.tall{height:340px} .filters{position:static} .filters select{min-width:0;width:100%} .filters label{flex:1 1 45%} }
 </style>
@@ -105,6 +113,7 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;border-top:1px solid 
     <p class="sub"><b>CRM TECNOLOGÍAS EN SALUD</b> · gestor farmacéutico (empresa ficticia) · Corte <b id="corte">–</b> · Precios máximos de la Circular 022 de 2026 (CNPMDM)</p>
   </div>
   <div style="display:flex;gap:8px">
+    <a class="chip" style="text-decoration:none;padding:8px 10px" href="analizar.html">🔒 Analizar un archivo</a>
     <a class="chip" style="text-decoration:none;padding:8px 10px" href="informe_ejecutivo.html">Informe ejecutivo</a>
     <button id="tema" type="button">◐ Tema</button>
   </div>
@@ -114,7 +123,9 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
   <button role="tab" data-tab="precios" aria-selected="false">Validación de precios</button>
-  <button role="tab" data-tab="pqrs" aria-selected="false">Seguimiento PQRS</button>
+  <button role="tab" data-tab="pqrsb2b" aria-selected="false">PQRS B2B comercial</button>
+  <button role="tab" data-tab="pqrsdisp" aria-selected="false">PQRS dispensación</button>
+  <button role="tab" data-tab="pqrs" aria-selected="false">Gestión PQRS (ambos)</button>
   <button role="tab" data-tab="metas" aria-selected="false">Metas regulatorias</button>
   <button role="tab" data-tab="mercado" aria-selected="false">Casos del mercado</button>
   <button role="tab" data-tab="datos" aria-selected="false">Calidad de datos</button>
@@ -137,22 +148,22 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;border-top:1px solid 
   <div class="kpis" id="kResumen"></div>
   <div class="insights" id="insights"></div>
   <div class="grid">
-    <div class="card"><h3>PQRS por mes y canal</h3><p class="hint">Clic en una barra para filtrar por mes.</p><div class="chart"><canvas id="cMesCanal"></canvas></div></div>
-    <div class="card"><h3>Estado de las líneas ofertadas por comprador</h3><p class="hint">Validación contra el PMV institucional y el precio piso.</p><div class="chart"><canvas id="cEstadoRes"></canvas></div></div>
+    <div class="card"><h3>PQRS por mes: B2B comercial frente a dispensación</h3><p class="hint">Número de casos radicados en cada mes. Encima de cada barra va el total del mes. Clic en una barra para filtrar.</p><div class="chart"><canvas id="cMesCanal"></canvas></div><p class="nota" id="n_cMesCanal"></p></div>
+    <div class="card"><h3>Estado de las líneas ofertadas por comprador</h3><p class="hint">Validación contra el PMV institucional y el precio piso.</p><div class="chart"><canvas id="cEstadoRes"></canvas></div><p class="nota" id="n_cEstadoRes"></p></div>
   </div>
 </section>
 
 <!-- PRECIOS -->
 <section role="tabpanel" id="precios">
-  <p class="lead">Cada línea de las ofertas se cruza por CUM con la tabla oficial de la Circular 022 de 2026. Si la tarifa supera el precio máximo institucional, se rechaza; si queda bajo el precio piso interno, se marca riesgo de margen. Este tablero responde al filtro de comprador.</p>
+  <p class="lead">Cada línea se cruza por CUM con la Circular 022 de 2026: si la tarifa supera el precio máximo institucional, se rechaza. Los medicamentos <b>no regulados</b> se comparan con el precio publicado en el <b>SISMED</b> (último corte público: junio de 2019): a crédito de 90 días el margen viable es de 22 % a 32 %; de contado, ±5 %. Por encima hay riesgo de reporte por especulación ante la SIC. Si la tarifa queda bajo el precio piso interno, se marca pérdida. Este tablero responde al filtro de comprador.</p>
   <div class="kpis" id="kPrecios"></div>
   <div class="grid">
-    <div class="card"><h3>Estado por comprador</h3><div class="chart"><canvas id="cEstado"></canvas></div></div>
-    <div class="card"><h3>Hallazgos por tipo</h3><div class="chart"><canvas id="cHall"></canvas></div></div>
+    <div class="card"><h3>Estado por comprador</h3><div class="chart"><canvas id="cEstado"></canvas></div><p class="nota" id="n_cEstado"></p></div>
+    <div class="card"><h3>Hallazgos por tipo</h3><div class="chart"><canvas id="cHall"></canvas></div><p class="nota" id="n_cHall"></p></div>
   </div>
   <div class="grid" style="margin-top:12px">
-    <div class="card"><h3>Tarifa ofertada frente al PMV</h3><p class="hint">Cada punto es una línea. Sobre 100 % la tarifa supera el precio máximo.</p><div class="chart"><canvas id="cRatio"></canvas></div></div>
-    <div class="card"><h3>Valor ofertado mensual por comprador</h3><div class="chart"><canvas id="cValor"></canvas></div></div>
+    <div class="card"><h3>Tarifa ofertada frente al PMV</h3><p class="hint">Cada punto es una línea. Sobre 100 % la tarifa supera el precio máximo.</p><div class="chart"><canvas id="cRatio"></canvas></div><p class="nota" id="n_cRatio"></p></div>
+    <div class="card"><h3>Valor ofertado mensual por comprador</h3><div class="chart"><canvas id="cValor"></canvas></div><p class="nota" id="n_cValor"></p></div>
   </div>
   <h2>Detalle de líneas</h2>
   <div class="tablebar"><input id="qLineas" placeholder="Buscar por CUM, medicamento o hallazgo…"><select id="eLineas"><option value="">Todos los estados</option><option>RECHAZADA</option><option>CON OBSERVACIONES</option><option>APROBADA</option></select></div>
@@ -162,28 +173,78 @@ footer{margin-top:36px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 
 <!-- PQRS -->
 <section role="tabpanel" id="pqrs">
-  <p class="lead">Seguimiento de 440 PQRS del semestre en dos canales: B2B (convenios, licitaciones y usuarios internos) y dispensación a pacientes. Término legal: 15 días hábiles (Ley 1755 de 2015); pendientes: 48 horas (Resolución 1604 de 2013); acuerdo de servicio interno por severidad.</p>
+  <p class="lead">Vista conjunta de la gestión. Cada canal tiene su propia pestaña: <b>PQRS B2B comercial</b> y <b>PQRS dispensación</b>. Término legal: 15 días hábiles (Ley 1755 de 2015); pendientes: 48 horas (Resolución 1604 de 2013); acuerdo de servicio interno por severidad.</p>
   <div class="kpis" id="kPqrs"></div>
-  <div class="grid">
-    <div class="card"><h3>Tendencia mensual por canal</h3><div class="chart"><canvas id="cTend"></canvas></div></div>
-    <div class="card"><h3>Oportunidad de respuesta por mes</h3><div class="chart"><canvas id="cOpor"></canvas></div></div>
+
+
+
+  <div class="bloque" style="border-top-color:var(--c6)">
+    <h2>Gestión de ambos canales</h2>
+    <div class="grid">
+      <div class="card"><h3>Cumplimiento del acuerdo de servicio por mes y canal</h3><p class="hint">% de casos cerrados dentro del plazo interno según severidad.</p><div class="chart"><canvas id="cOpor"></canvas></div><p class="nota" id="n_cOpor"></p></div>
+      <div class="card"><h3>Severidad por canal</h3><p class="hint">Clic para filtrar por severidad.</p><div class="chart"><canvas id="cSev"></canvas></div><p class="nota" id="n_cSev"></p></div>
+    </div>
+    <div class="grid three" style="margin-top:12px">
+      <div class="card"><h3>Ente de control relacionado</h3><div class="chart"><canvas id="cEnte"></canvas></div><p class="nota" id="n_cEnte"></p></div>
+      <div class="card"><h3>Antigüedad de los casos abiertos</h3><div class="chart"><canvas id="cAging"></canvas></div><p class="nota" id="n_cAging"></p></div>
+      <div class="card"><h3>Medio de recepción</h3><div class="chart"><canvas id="cMedio"></canvas></div><p class="nota" id="n_cMedio"></p></div>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="card"><h3>Medicamentos con más PQRS</h3><div class="chart"><canvas id="cMed"></canvas></div><p class="nota" id="n_cMed"></p></div>
+    </div>
   </div>
-  <div class="grid" style="margin-top:12px">
-    <div class="card"><h3>PQRS por categoría</h3><p class="hint">Clic en una barra para filtrar por categoría.</p><div class="chart tall"><canvas id="cCat"></canvas></div></div>
-    <div class="card"><h3>Severidad y ente relacionado</h3><p class="hint">Clic en la dona para filtrar por severidad.</p><div class="split"><div class="chart tall"><canvas id="cSev"></canvas></div><div class="chart tall"><canvas id="cEnte"></canvas></div></div></div>
-  </div>
-  <div class="grid three" style="margin-top:12px">
-    <div class="card"><h3>Envejecimiento de casos abiertos</h3><div class="chart"><canvas id="cAging"></canvas></div></div>
-    <div class="card"><h3>Medicamentos con más PQRS</h3><div class="chart"><canvas id="cMed"></canvas></div></div>
-    <div class="card"><h3>Medio de recepción</h3><div class="chart"><canvas id="cMedio"></canvas></div></div>
-  </div>
-  <h2>Mapa de calor: ciudad × categoría</h2>
-  <p class="lead">Número de PQRS. Clic en una celda para filtrar.</p>
+  <h2>Mapa de calor: ciudad × categoría (ambos canales)</h2>
+  <p class="lead">Número de casos y % sobre el total. Clic en una celda para filtrar.</p>
   <div class="tablewrap"><table class="heat" id="tHeat"></table></div>
   <h2>Detalle de casos</h2>
   <div class="tablebar"><input id="qPqr" placeholder="Buscar por radicado, descripción, medicamento, punto…"><label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="soloVencidas"> Solo fuera de término</label></div>
   <div class="tablewrap"><table id="tPqr"></table></div>
   <div class="pager" id="pPqr"></div>
+</section>
+
+<!-- PQRS B2B -->
+<section role="tabpanel" id="pqrsb2b">
+  <div class="bloque" id="bB2B">
+    <h2>Solicitudes comerciales B2B</h2>
+    <p class="lead">Convenios y licitaciones: casos que radican los compradores institucionales y los usuarios internos de los equipos de licitaciones y convenios (precios, facturación, cartera, despachos, calidad y documentos).</p>
+    <div class="kpis" id="kB2B"></div>
+    <div class="grid">
+      <div class="card"><h3>B2B por mes y tipo de solicitante</h3><div class="chart"><canvas id="cB2BMes"></canvas></div><p class="nota" id="n_cB2BMes"></p></div>
+      <div class="card"><h3>B2B por categoría</h3><p class="hint">Casos y % sobre el total B2B. Clic para filtrar.</p><div class="chart"><canvas id="cB2BCat"></canvas></div><p class="nota" id="n_cB2BCat"></p></div>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="card"><h3>B2B por comprador</h3><p class="hint">Casos radicados e impacto económico estimado.</p><div class="chart"><canvas id="cB2BComp"></canvas></div><p class="nota" id="n_cB2BComp"></p></div>
+      <div class="card"><h3>Ajustes de precio por la Circular 022</h3><p class="hint">Solicitudes de ajuste de tarifa al nuevo PMV, por mes.</p><div class="chart"><canvas id="cB2BAjuste"></canvas></div><p class="nota" id="n_cB2BAjuste"></p></div>
+    </div>
+  </div>
+  <h2>Casos B2B</h2>
+  <div class="tablebar"><input id="qPqrB" placeholder="Buscar por radicado, comprador, descripción, medicamento…"><label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="soloVencidasB"> Solo fuera de término</label></div>
+  <div class="tablewrap"><table id="tPqrB"></table></div>
+  <div class="pager" id="pPqrB"></div>
+</section>
+
+<!-- PQRS DISPENSACIÓN -->
+<section role="tabpanel" id="pqrsdisp">
+  <div class="bloque disp" id="bDisp">
+    <h2>Dispensación a pacientes</h2>
+    <p class="lead">Casos de los puntos de dispensación: pendientes, desabastecimiento, domicilios, tiempos de espera, trámites y errores de entrega. Los pendientes deben entregarse en 48 horas (Resolución 1604 de 2013).</p>
+    <div class="kpis" id="kDisp"></div>
+    <div class="grid">
+      <div class="card"><h3>Dispensación por mes</h3><div class="chart"><canvas id="cDisMes"></canvas></div><p class="nota" id="n_cDisMes"></p></div>
+      <div class="card"><h3>Dispensación por categoría</h3><p class="hint">Casos y % sobre el total de dispensación. Clic para filtrar.</p><div class="chart"><canvas id="cDisCat"></canvas></div><p class="nota" id="n_cDisCat"></p></div>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="card"><h3>Dispensación por ciudad</h3><p class="hint">Casos y tutelas por ciudad.</p><div class="chart"><canvas id="cDisCiudad"></canvas></div><p class="nota" id="n_cDisCiudad"></p></div>
+      <div class="card"><h3>Pendientes entregados a tiempo</h3><p class="hint">Casos de entrega incompleta según los días hábiles que tardó la solución.</p><div class="chart"><canvas id="cDisPend"></canvas></div><p class="nota" id="n_cDisPend"></p></div>
+    </div>
+  </div>
+  <h2>Mapa de calor: ciudad × categoría (dispensación)</h2>
+  <p class="lead">Número de casos y, entre paréntesis, % sobre el total de dispensación. Clic en una celda para filtrar.</p>
+  <div class="tablewrap"><table class="heat" id="tHeatD"></table></div>
+  <h2>Casos de dispensación</h2>
+  <div class="tablebar"><input id="qPqrD" placeholder="Buscar por radicado, punto, descripción, medicamento…"><label style="font-size:13px;display:flex;gap:6px;align-items:center"><input type="checkbox" id="soloVencidasD"> Solo fuera de término</label></div>
+  <div class="tablewrap"><table id="tPqrD"></table></div>
+  <div class="pager" id="pPqrD"></div>
 </section>
 
 <!-- METAS -->
@@ -226,7 +287,7 @@ const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).
 const PAL = () => ["--c1","--c2","--c3","--c4","--c5","--c6"].map(css);
 let D = {}, charts = {}, tab = "resumen";
 const F = {Comprador:"", Canal:"", Ciudad:"", Categoria:"", Severidad:"", Estado:"", Mes:""};
-const page = {lineas:0, pqr:0};
+const page = {lineas:0, pqr:0, pqrB:0, pqrD:0};
 const corto = c => c.replace("RED HOSPITALARIA ", "").replace("CLÍNICA INTEGRAL ", "").replace(" IPS", "");
 
 // ---------- tema
@@ -265,25 +326,50 @@ document.fonts.ready.then(() => Promise.all(["kpis","lineas","pqr","metas","caso
     $("#fSeveridad").innerHTML = '<option value="">Todas</option>' + ["Crítica","Alta","Media","Baja"].map(v => `<option>${v}</option>`).join("");
     opts("#fEstado", uniq(p, "ESTADO"));
     opts("#fMes", uniq(p, "MES"));
-    Object.keys(F).forEach(k => $("#f" + k).onchange = e => { F[k] = e.target.value; page.lineas = page.pqr = 0; render(); });
+    Object.keys(F).forEach(k => $("#f" + k).onchange = e => { F[k] = e.target.value; page.lineas = page.pqr = page.pqrB = page.pqrD = 0; render(); });
     $("#limpiar").onclick = () => { Object.keys(F).forEach(k => { F[k] = ""; $("#f" + k).value = ""; }); render(); };
     [...new Set(c.map(x => x.ENTE))].forEach(e => $("#fEnteCaso").add(new Option(e, e)));
     $("#fEnteCaso").onchange = render;
     $("#qLineas").oninput = $("#eLineas").onchange = () => { page.lineas = 0; render(); };
     $("#qPqr").oninput = $("#soloVencidas").onchange = () => { page.pqr = 0; render(); };
+    $("#qPqrB").oninput = $("#soloVencidasB").onchange = () => { page.pqrB = 0; render(); };
+    $("#qPqrD").oninput = $("#soloVencidasD").onchange = () => { page.pqrD = 0; render(); };
     let t0 = "resumen"; try { t0 = localStorage.getItem("pestana") || t0; } catch(e){}
     abrir(t0);
   })
   .catch(e => { console.error(e); $("#err").style.display = "block"; });
 
-function setF(k, v){ F[k] = F[k] === v ? "" : v; $("#f" + k).value = F[k]; page.pqr = 0; render(); }
+function setF(k, v){ F[k] = F[k] === v ? "" : v; $("#f" + k).value = F[k]; page.pqr = page.pqrB = page.pqrD = 0; render(); }
 
-function filtrarPqr(){
-  return D.p.filter(x => (!F.Comprador || x.COMPRADOR === F.Comprador) && (!F.Canal || x.CANAL === F.Canal)
+function filtrarPqr(ignorarCanal){
+  return D.p.filter(x => (!F.Comprador || x.COMPRADOR === F.Comprador) && (ignorarCanal || !F.Canal || x.CANAL === F.Canal)
     && (!F.Ciudad || x.CIUDAD === F.Ciudad) && (!F.Categoria || x.CATEGORIA === F.Categoria)
     && (!F.Severidad || x.SEVERIDAD === F.Severidad) && (!F.Estado || x.ESTADO === F.Estado) && (!F.Mes || x.MES === F.Mes));
 }
 const filtrarLineas = () => D.l.filter(x => !F.Comprador || x.COMPRADOR === F.Comprador);
+
+Chart.register(ChartDataLabels);
+Chart.defaults.set("plugins.datalabels", {display:false});
+const CAN = {"B2B":"B2B comercial", "Dispensación":"Dispensación"};
+const p1 = (a, b) => b ? (a / b * 100) : 0;
+const pc = (a, b) => pct(p1(a, b));
+const nota = (id, html) => { const el = document.getElementById("n_" + id); if (el) el.innerHTML = html; };
+const mesTxt = m => { const [y, mm] = m.split("-"); return ["", "enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][+mm] + " " + y; };
+const variacion = (a, b) => a ? `${b >= a ? "+" : ""}${pct((b - a) / a * 100)}` : "–";
+// etiquetas: valor dentro de cada segmento apilado
+// número y % del total de la barra (columna apilada)
+const totCol = c => c.chart.data.datasets.reduce((a, d, i) => a + (c.chart.isDatasetVisible(i) ? (d.data[c.dataIndex] || 0) : 0), 0);
+const lblDentro = (min = 3) => ({display: c => (c.dataset.data[c.dataIndex] || 0) >= min, color:"#fff", font:{weight:600, size:10.5}, textAlign:"center",
+  formatter: (v, c) => `${fmt(v)}\n${pct(v / Math.max(1, totCol(c)) * 100)}`});
+// etiqueta al final de la barra con valor y % del total
+const lblFin = (total, conPct = true) => ({display: c => (c.dataset.data[c.dataIndex] || 0) > 0, anchor:"end", align:"end", offset:2, clamp:true,
+  color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => conPct && total ? `${fmt(v)} · ${pc(v, total)}` : fmt(v)});
+// total encima de una barra apilada (se dibuja sobre el último conjunto de datos)
+const lblTotal = (totales, horizontal = false) => ({display: c => c.datasetIndex === c.chart.data.datasets.length - 1 && totales[c.dataIndex] > 0,
+  anchor:"end", align:"end", offset:2, color: () => css("--ink"), font:{weight:700, size:11.5},
+  formatter: (v, c) => { const g = totales.reduce((a, b) => a + b, 0); return `${fmt(totales[c.dataIndex])} · ${pc(totales[c.dataIndex], g)}`; }});
+const lblDona = () => ({color:"#fff", font:{weight:600, size:11}, display: c => { const t = c.dataset.data.reduce((a, b) => a + b, 0); return t && c.dataset.data[c.dataIndex] / t >= .05; },
+  formatter: (v, c) => { const t = c.dataset.data.reduce((a, b) => a + b, 0); return `${fmt(v)}\n${pc(v, t)}`; }, textAlign:"center"});
 
 function chart(id, cfg){
   if (charts[id]) charts[id].destroy();
@@ -295,9 +381,10 @@ const wrapL = (t, n=22) => { const out = [""]; String(t).split(" ").forEach(w =>
 const kpiHtml = arr => arr.map(([l, v, c, d]) => `<div class="kpi ${c||""}"><div class="l">${l}</div><div class="v">${v}</div>${d ? `<div class="d">${d}</div>` : ""}</div>`).join("");
 const contar = (arr, key) => arr.reduce((a, x) => (a[x[key]] = (a[x[key]] || 0) + 1, a), {});
 const recortar = (t, n=26) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + "…" : t; };
-const hbar = (id, entries, color, onClickKey) => chart(id, {type:"bar",
+const hbar = (id, entries, color, onClickKey, total) => chart(id, {type:"bar",
   data:{labels:entries.map(e => recortar(e[0])), datasets:[{data:entries.map(e => e[1]), backgroundColor:color, borderRadius:3}]},
-  options:{indexAxis:"y", layout:{padding:{left:8}}, plugins:{legend:{display:false}, tooltip:{callbacks:{title:c => entries[c[0].dataIndex][0]}}}, scales:{y:{ticks:{autoSkip:false, font:{size:11.5}}}},
+  options:{indexAxis:"y", layout:{padding:{left:8, right:70}}, plugins:{legend:{display:false}, datalabels:lblFin(total ?? entries.reduce((a, e) => a + e[1], 0)),
+    tooltip:{callbacks:{title:c => entries[c[0].dataIndex][0]}}}, scales:{y:{ticks:{autoSkip:false, font:{size:11.5}}}, x:{grace:"5%"}},
     onClick: onClickKey ? (ev, el) => el.length && setF(onClickKey, entries[el[0].index][0]) : undefined}});
 
 function stats(P){
@@ -315,12 +402,14 @@ function stats(P){
 function chips(){
   $("#chips").innerHTML = Object.entries(F).filter(([k, v]) => v).map(([k, v]) => `<span class="chip">${k}: ${esc(v)}</span>`).join("");
   $("#filters").style.display = ["metas","mercado","datos"].includes(tab) ? "none" : "flex";
+  $("#fCanal").parentElement.style.display = ["pqrsb2b","pqrsdisp"].includes(tab) ? "none" : "";
+  $("#fComprador").parentElement.style.display = tab === "pqrsdisp" ? "none" : "";
 }
 
 function render(){
   if (!D.p) return;
   chips();
-  ({resumen:rResumen, precios:rPrecios, pqrs:rPqrs, metas:rMetas, mercado:rMercado, datos:rDatos})[tab]();
+  ({resumen:rResumen, precios:rPrecios, pqrsb2b:rB2B, pqrsdisp:rDisp, pqrs:rPqrs, metas:rMetas, mercado:rMercado, datos:rDatos})[tab]();
 }
 
 // ---------- RESUMEN
@@ -333,7 +422,8 @@ function rResumen(){
     ["Líneas validadas", fmt(L.length), "", `${D.k.presentaciones_circular.toLocaleString("es-CO")} CUM en la circular`],
     ["Aprobadas", pct(aprob), aprob >= 80 ? "ok" : "warn"],
     ["Sobre el PMV", fmt(sobre.length), sobre.length ? "bad" : "ok", "excedente " + millones(exc) + "/mes"],
-    ["PQRS", fmt(s.total), "", `${fmt(s.abiertas)} abiertas`],
+    ["PQRS B2B comerciales", fmt(P.filter(x => x.CANAL === "B2B").length), "", pc(P.filter(x => x.CANAL === "B2B").length, s.total) + " del total"],
+    ["PQRS de dispensación", fmt(P.filter(x => x.CANAL !== "B2B").length), "", pc(P.filter(x => x.CANAL !== "B2B").length, s.total) + " del total"],
     ["Oportunidad legal", pct(s.opor), s.opor >= 95 ? "ok" : "warn", "≤ 15 días hábiles"],
     ["Acuerdo de servicio", pct(s.sla), s.sla >= 90 ? "ok" : s.sla >= 80 ? "warn" : "bad"],
     ["Fuera de término", fmt(s.venc), s.venc ? "bad" : "ok"],
@@ -354,10 +444,24 @@ function rResumen(){
   ].filter(Boolean).map(t => `<div class="insight">${t}</div>`).join("");
   // charts
   const meses = [...new Set(D.p.map(x => x.MES))].sort(), canales = [...new Set(D.p.map(x => x.CANAL))].sort();
-  chart("cMesCanal", {type:"bar", data:{labels:meses, datasets:canales.map((c, i) => ({label:c, backgroundColor:PAL()[i],
-      data:meses.map(m => P.filter(x => x.MES === m && x.CANAL === c).length)}))},
-    options:{scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}}, onClick:(e, el) => el.length && setF("Mes", meses[el[0].index])}});
+  const serie = c => meses.map(m => P.filter(x => x.MES === m && x.CANAL === c).length);
+  const tot = meses.map(m => P.filter(x => x.MES === m).length);
+  chart("cMesCanal", {type:"bar", data:{labels:meses.map(m => mesTxt(m).slice(0, 3) + " " + m.slice(2, 4)), datasets:canales.map((c, i) => ({label:CAN[c] || c, backgroundColor:PAL()[i],
+      data:serie(c), datalabels:{labels:{v:lblDentro(), t:lblTotal(tot)}}}))},
+    options:{layout:{padding:{top:18}}, scales:{x:{stacked:true}, y:{stacked:true, grace:"8%"}}, plugins:{legend:{position:"bottom"}, datalabels:{display:true}},
+      onClick:(e, el) => el.length && setF("Mes", meses[el[0].index])}});
+  notaMesCanal("cMesCanal", P, meses);
   estadoChart("cEstadoRes", L);
+}
+function notaMesCanal(id, P, meses){
+  const b = P.filter(x => x.CANAL === "B2B"), d = P.filter(x => x.CANAL !== "B2B"), n = m => P.filter(x => x.MES === m).length;
+  if (!P.length) return nota(id, "Sin casos para los filtros elegidos.");
+  const pico = meses.reduce((a, m) => n(m) > n(a) ? m : a, meses[0]);
+  const bm = m => b.filter(x => x.MES === m).length, dm = m => d.filter(x => x.MES === m).length;
+  nota(id, `En el periodo hay <b>${fmt(P.length)} PQRS</b>: <b>${fmt(b.length)} B2B comerciales (${pc(b.length, P.length)})</b> y <b>${fmt(d.length)} de dispensación (${pc(d.length, P.length)})</b>. ` +
+    `El mes con más casos fue <b>${mesTxt(pico)}</b> con ${fmt(n(pico))}, de los cuales ${pc(bm(pico), n(pico))} fueron B2B. ` +
+    `Las B2B pasaron de ${bm(meses[0])} en ${mesTxt(meses[0])} a ${bm("2026-10")} en octubre (${variacion(bm(meses[0]), bm("2026-10"))}), por las solicitudes de ajuste de precio tras la Circular 022; ` +
+    `las de dispensación bajaron de ${dm(meses[0])} a ${dm("2026-10")} (${variacion(dm(meses[0]), dm("2026-10"))}). Noviembre tiene corte al día 20.`);
 }
 function estadoChart(id, L){
   const comps = [...new Set(L.map(x => x.COMPRADOR))].sort();
@@ -366,8 +470,15 @@ function estadoChart(id, L){
       {label:"Aprobada", data:comps.map(c => n(c, "APROBADA")), backgroundColor:css("--ok")},
       {label:"Con observaciones", data:comps.map(c => n(c, "CON OBSERVACIONES")), backgroundColor:css("--warn")},
       {label:"Rechazada", data:comps.map(c => n(c, "RECHAZADA")), backgroundColor:css("--bad")}]},
-    options:{indexAxis:"y", scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"}},
+    options:{indexAxis:"y", layout:{padding:{right:30}}, scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:"bottom"},
+      datalabels:{display:true, labels:{v:lblDentro(1), t:lblTotal(comps.map(c => L.filter(x => x.COMPRADOR === c).length))}}},
       onClick:(e, el) => el.length && setF("Comprador", comps[el[0].index])}});
+  if (!L.length) return nota(id, "Sin líneas para el filtro.");
+  const ap = L.filter(x => x.ESTADO === "APROBADA").length, ob = L.filter(x => x.ESTADO === "CON OBSERVACIONES").length, re = L.filter(x => x.ESTADO === "RECHAZADA").length;
+  const tasa = c => n(c, "RECHAZADA") / L.filter(x => x.COMPRADOR === c).length;
+  const peor = comps.reduce((a, c) => tasa(c) > tasa(a) ? c : a, comps[0]);
+  nota(id, `De <b>${fmt(L.length)} líneas</b> ofertadas, <b>${fmt(ap)} (${pc(ap, L.length)}) quedaron aprobadas</b>, ${fmt(ob)} (${pc(ob, L.length)}) con observaciones y <b>${fmt(re)} (${pc(re, L.length)}) rechazadas</b>. ` +
+    (comps.length > 1 ? `El comprador con mayor proporción de rechazo es <b>${esc(corto(peor))}</b>: ${n(peor, "RECHAZADA")} de ${L.filter(x => x.COMPRADOR === peor).length} líneas (${pct(tasa(peor) * 100)}).` : ""));
 }
 
 // ---------- PRECIOS
@@ -378,87 +489,223 @@ function rPrecios(){
   $("#kPrecios").innerHTML = kpiHtml([
     ["Líneas", fmt(L.length)], ["Rechazadas", fmt(L.filter(x => x.ESTADO === "RECHAZADA").length), "bad"],
     ["Con observaciones", fmt(L.filter(x => x.ESTADO === "CON OBSERVACIONES").length), "warn"],
-    ["Sobre el PMV", fmt(sobre.length), sobre.length ? "bad" : "ok"], ["Excedente / mes", millones(exc), exc ? "bad" : "ok"],
+    ["Sobre el PMV", fmt(sobre.length), sobre.length ? "bad" : "ok", "medicamentos regulados"],
+    ["Riesgo de especulación", fmt(L.filter(x => (x.RESULTADO_CRUCE || "").includes("especulación")).length), L.some(x => (x.RESULTADO_CRUCE || "").includes("especulación")) ? "bad" : "ok", "no regulados sobre el SISMED"],
+    ["Excedente / mes", millones(exc), exc ? "bad" : "ok", "sobre PMV o tope SISMED"],
     ["Bajo precio piso", fmt(bajo.length), bajo.length ? "warn" : "ok"], ["Pérdida / mes", millones(L.reduce((a, x) => a + (x.PERDIDA_MES || 0), 0)), bajo.length ? "bad" : "ok"],
     ["Valor ofertado / mes", millones(val)],
   ]);
   estadoChart("cEstado", L);
   const tipos = {}; L.forEach(x => (x.HALLAZGOS || "").split("; ").filter(Boolean).forEach(h => tipos[h] = (tipos[h] || 0) + 1));
-  hbar("cHall", Object.entries(tipos).sort((a, b) => b[1] - a[1]), css("--c1"));
+  const th = Object.entries(tipos).sort((a, b) => b[1] - a[1]);
+  hbar("cHall", th, css("--c1"), null, L.length);
+  nota("cHall", th.length ? `El porcentaje de cada barra es sobre las ${fmt(L.length)} líneas (una línea puede tener varios hallazgos). El más frecuente es <b>${esc(th[0][0])}</b>: ${th[0][1]} líneas (${pc(th[0][1], L.length)}). ` +
+    `Las líneas sobre el PMV suman <b>${millones(exc)}</b> de excedente al mes y las que quedan bajo el costo, <b>${millones(L.reduce((a, x) => a + (x.PERDIDA_MES || 0), 0))}</b> de pérdida al mes.` : "Sin hallazgos.");
   const comps = [...new Set(L.map(x => x.COMPRADOR))].sort();
   chart("cRatio", {type:"scatter", data:{datasets:comps.map((c, i) => ({label:corto(c), backgroundColor:PAL()[i],
       data:L.filter(x => x.COMPRADOR === c && x.PMV_INSTITUCIONAL && x.TARIFA).map(x => ({x:x.PMV_INSTITUCIONAL, y:x.TARIFA / x.PMV_INSTITUCIONAL * 100, t:x.DESCRIPCION}))}))},
-    options:{plugins:{legend:{position:"bottom"}, tooltip:{callbacks:{label:c => `${c.raw.t.slice(0, 40)}: ${c.raw.y.toFixed(1)} % del PMV`}},
+    options:{plugins:{legend:{position:"bottom"}, datalabels:{display: c => (c.dataset.data[c.dataIndex] || {}).y > 100, align:"right", offset:4, color: () => css("--bad"), font:{weight:600, size:10.5}, formatter: v => pct(v.y)},
+      tooltip:{callbacks:{label:c => `${c.raw.t.slice(0, 40)}: ${c.raw.y.toFixed(1)} % del PMV`}},
       annotation:{}}, scales:{x:{type:"logarithmic", title:{display:true, text:"PMV institucional (escala log)"}, ticks:{autoSkip:false, maxRotation:0, callback:v => ({1e3:"$1 mil",1e4:"$10 mil",1e5:"$100 mil",1e6:"$1 M",1e7:"$10 M",1e8:"$100 M"})[v] || ""}}, y:{title:{display:true, text:"Tarifa / PMV (%)"}, suggestedMin:50, suggestedMax:135}}}});
   chart("cValor", {type:"bar", data:{labels:comps.map(corto), datasets:[{label:"Valor ofertado/mes", backgroundColor:css("--c1"),
       data:comps.map(c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.VALOR_OFERTA_MES || 0), 0))},
       {label:"Excedente sobre PMV", backgroundColor:css("--bad"), data:comps.map(c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.EXCEDENTE_MES || 0), 0))}]},
-    options:{plugins:{legend:{position:"bottom"}, tooltip:{callbacks:{label:c => `${c.dataset.label}: ${pesos(c.raw)}`}}}, scales:{y:{ticks:{callback:v => millones(v)}}}}});
+    options:{layout:{padding:{top:18}}, plugins:{legend:{position:"bottom"}, datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:10.5}, textAlign:"center", formatter: (v, c) => `${millones(v)}\n${pc(v, c.dataset.data.reduce((a, b) => a + b, 0))}`},
+      tooltip:{callbacks:{label:c => `${c.dataset.label}: ${pesos(c.raw)}`}}}, scales:{y:{grace:"10%", ticks:{callback:v => millones(v)}}}}});
+  const vc = c => L.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.VALOR_OFERTA_MES || 0), 0);
+  const topV = comps.reduce((a, c) => vc(c) > vc(a) ? c : a, comps[0]);
+  nota("cValor", comps.length ? `Las ofertas suman <b>${millones(val)}</b> al mes. <b>${esc(corto(topV))}</b> concentra ${pc(vc(topV), val)} del valor. ` +
+    `El excedente sobre el PMV (${millones(exc)}) equivale al <b>${pc(exc, val)}</b> del valor ofertado: es el monto que se cobraría por encima del precio máximo si no se corrige.` : "");
+  const sob = L.filter(x => x.PMV_INSTITUCIONAL && x.TARIFA && x.TARIFA > x.PMV_INSTITUCIONAL), conP = L.filter(x => x.PMV_INSTITUCIONAL && x.TARIFA);
+  const mx = sob.reduce((a, x) => x.TARIFA / x.PMV_INSTITUCIONAL > (a ? a.TARIFA / a.PMV_INSTITUCIONAL : 0) ? x : a, null);
+  nota("cRatio", conP.length ? `${fmt(conP.length)} líneas tienen PMV para comparar. En promedio la tarifa equivale al <b>${pct(conP.reduce((a, x) => a + x.TARIFA / x.PMV_INSTITUCIONAL * 100, 0) / conP.length)}</b> del precio máximo. ` +
+    `<b>${sob.length} líneas (${pc(sob.length, conP.length)}) superan el 100 %</b> y llevan su porcentaje en rojo` + (mx ? `; la más alta es ${esc((mx.DESCRIPCION || "").split(" - ").slice(0, 2).join(" - "))} con ${pct(mx.TARIFA / mx.PMV_INSTITUCIONAL * 100)}.` : ".") : "");
   // tabla
   const q = $("#qLineas").value.toLowerCase(), e = $("#eLineas").value;
   const rows = L.filter(x => (!e || x.ESTADO === e) && (!q || [x.CUM, x.DESCRIPCION, x.HALLAZGOS].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => ((b.EXCEDENTE_MES || 0) + (b.PERDIDA_MES || 0)) - ((a.EXCEDENTE_MES || 0) + (a.PERDIDA_MES || 0)) || (a.ESTADO > b.ESTADO ? 1 : -1));
   const pill = s => `<span class="pill ${s === "APROBADA" ? "p-ok" : s === "RECHAZADA" ? "p-bad" : "p-warn"}">${s}</span>`;
-  const res = r => r === "Dentro del rango" ? "p-ok" : (r || "").startsWith("Sin PMV") ? "p-warn" : "p-bad";
-  tabla("#tLineas", "#pLineas", "lineas", rows, ["Comprador","CUM","Medicamento","Cantidad","Tarifa ofertada","PMV Circular 022","% ganancia sobre PMV","Precio piso (costo)","% margen","% pérdida","Excedente/mes","Pérdida/mes","Resultado del cruce","Estado","Hallazgos"],
+  const res = r => /Dentro|viable|Alineado/.test(r || "") ? "p-ok" : /Sobreprecio|especulación|Pérdida/.test(r || "") ? "p-bad" : "p-warn";
+  tabla("#tLineas", "#pLineas", "lineas", rows, ["Comprador","CUM","Medicamento","Cantidad","Tarifa ofertada","PMV Circular 022","% ganancia sobre PMV","Precio SISMED","% sobre SISMED","Pago","Precio piso (costo)","% margen","% pérdida","Excedente/mes","Pérdida/mes","Resultado del cruce","Estado","Hallazgos"],
     x => `<td>${esc(corto(x.COMPRADOR))}</td><td>${esc(x.CUM)}</td><td class="wide">${esc(x.DESCRIPCION)}</td><td class="num">${fmt(x.CANTIDAD)}</td>
       <td class="num">${x.TARIFA != null ? pesos(x.TARIFA) : "–"}</td><td class="num">${x.PMV_INSTITUCIONAL != null ? pesos(x.PMV_INSTITUCIONAL) : "–"}</td>
-      <td class="num">${x.PCT_SOBRE_PMV ? pct(x.PCT_SOBRE_PMV) : "–"}</td><td class="num">${x.PRECIO_PISO != null ? pesos(x.PRECIO_PISO) : "–"}</td>
+      <td class="num">${x.PCT_SOBRE_PMV ? pct(x.PCT_SOBRE_PMV) : "–"}</td><td class="num">${x.PRECIO_SISMED != null && x.PMV_INSTITUCIONAL == null ? pesos(x.PRECIO_SISMED) : "–"}</td>
+      <td class="num">${x.PCT_SOBRE_SISMED != null ? pct(x.PCT_SOBRE_SISMED) : "–"}</td><td>${esc(x.FORMA_PAGO || "")}</td><td class="num">${x.PRECIO_PISO != null ? pesos(x.PRECIO_PISO) : "–"}</td>
       <td class="num">${x.PCT_MARGEN != null ? pct(x.PCT_MARGEN) : "–"}</td><td class="num">${x.PCT_PERDIDA ? pct(x.PCT_PERDIDA) : "–"}</td>
       <td class="num">${x.EXCEDENTE_MES ? pesos(x.EXCEDENTE_MES) : "–"}</td><td class="num">${x.PERDIDA_MES ? pesos(x.PERDIDA_MES) : "–"}</td>
       <td><span class="pill ${res(x.RESULTADO_CRUCE)}">${esc(x.RESULTADO_CRUCE || "")}</span></td><td>${pill(x.ESTADO)}</td><td class="wide">${esc(x.HALLAZGOS)}</td>`);
 }
 
-// ---------- PQRS
+// ---------- PQRS B2B
+function rB2B(){
+  const P = filtrarPqr(true), s = stats(P);
+  const meses = [...new Set(D.p.map(x => x.MES))].sort(), mesL = meses.map(m => mesTxt(m).slice(0, 3) + " " + m.slice(2, 4));
+  const B = P.filter(x => x.CANAL === "B2B"), sb = stats(B), Ds = P.filter(x => x.CANAL !== "B2B");
+  // ===== B2B
+  const intern = B.filter(x => x.SOLICITANTE.startsWith("Usuario interno")).length;
+  $("#kB2B").innerHTML = kpiHtml([
+    ["Casos B2B", fmt(B.length), "", pc(B.length, P.length) + " de todas las PQRS"],
+    ["De usuarios internos", fmt(intern), "", pc(intern, B.length) + " · licitaciones y convenios"],
+    ["De compradores", fmt(B.length - intern), "", pc(B.length - intern, B.length)],
+    ["Acuerdo de servicio", pct(sb.sla), sb.sla >= 90 ? "ok" : sb.sla >= 80 ? "warn" : "bad", "meta 90 %"],
+    ["Oportunidad legal", pct(sb.opor), sb.opor >= 95 ? "ok" : "warn", "≤ 15 días hábiles"],
+    ["Abiertas / vencidas", `${fmt(sb.abiertas)} / ${fmt(sb.venc)}`, sb.venc ? "bad" : "ok"],
+    ["Impacto económico", millones(sb.impacto), "", "precios, facturación y cartera"],
+  ]);
+  const sols = ["Comprador", "Usuario interno – Licitaciones", "Usuario interno – Convenios"];
+  const totB = meses.map(m => B.filter(x => x.MES === m).length);
+  chart("cB2BMes", {type:"bar", data:{labels:mesL, datasets:sols.map((so, i) => ({label:so.replace("Usuario interno – ", "Interno: "), backgroundColor:[css("--c1"), css("--c3"), css("--c4")][i],
+      data:meses.map(m => B.filter(x => x.MES === m && x.SOLICITANTE === so).length), datalabels:{labels:{v:lblDentro(3), t:lblTotal(totB)}}}))},
+    options:{layout:{padding:{top:18}}, scales:{x:{stacked:true}, y:{stacked:true, grace:"8%"}}, plugins:{legend:{position:"bottom"}, datalabels:{display:true}}}});
+  const picoB = meses.reduce((a, m, i) => totB[i] > totB[meses.indexOf(a)] ? m : a, meses[0]);
+  const lic = B.filter(x => x.SOLICITANTE === sols[1]).length, conv = B.filter(x => x.SOLICITANTE === sols[2]).length;
+  nota("cB2BMes", B.length ? `De ${fmt(B.length)} casos B2B, <b>${fmt(B.length - intern)} (${pc(B.length - intern, B.length)}) los radicaron los compradores</b>, ${fmt(lic)} (${pc(lic, B.length)}) el equipo de licitaciones y ${fmt(conv)} (${pc(conv, B.length)}) el de convenios. ` +
+    `El pico fue <b>${mesTxt(picoB)}</b> con ${fmt(Math.max(...totB))} casos; desde septiembre el volumen B2B es ${pct((totB[3] + totB[4]) / 2 / Math.max(1, (totB[0] + totB[1] + totB[2]) / 3) * 100 - 100)} mayor que el promedio de junio a agosto.` : "");
+  const cb = Object.entries(contar(B, "CATEGORIA")).sort((a, b) => b[1] - a[1]);
+  hbar("cB2BCat", cb, css("--c1"), "Categoria");
+  nota("cB2BCat", cb.length ? `Las dos categorías B2B más frecuentes son <b>${esc(cb[0][0])}</b> (${cb[0][1]}, ${pc(cb[0][1], B.length)}) y <b>${esc((cb[1] || ["–", 0])[0])}</b> (${(cb[1] || [0, 0])[1]}, ${pc((cb[1] || [0, 0])[1], B.length)}). ` +
+    `Juntas representan ${pc(cb[0][1] + (cb[1] || [0, 0])[1], B.length)} de los casos comerciales.` : "");
+  const compsB = [...new Set(B.map(x => x.COMPRADOR))].filter(c => c !== "—").sort();
+  const nB = c => B.filter(x => x.COMPRADOR === c).length, iB = c => B.filter(x => x.COMPRADOR === c).reduce((a, x) => a + (x.IMPACTO_COP || 0), 0);
+  chart("cB2BComp", {type:"bar", data:{labels:compsB.map(corto), datasets:[
+      {label:"Casos", data:compsB.map(nB), backgroundColor:css("--c1"), yAxisID:"y", datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${fmt(v)} · ${pc(v, B.length)}`}},
+      {label:"Impacto económico", data:compsB.map(iB), backgroundColor:css("--c2"), yAxisID:"y2", datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, textAlign:"center", formatter: v => `${millones(v)}\n${pc(v, sb.impacto)}`}}]},
+    options:{layout:{padding:{top:20}}, plugins:{legend:{position:"bottom"}, tooltip:{callbacks:{label:c => c.dataset.yAxisID === "y2" ? `Impacto: ${pesos(c.raw)}` : `Casos: ${c.raw}`}}},
+      scales:{y:{grace:"12%", title:{display:true, text:"Casos"}}, y2:{position:"right", grace:"12%", grid:{display:false}, ticks:{callback:v => millones(v)}}},
+      onClick:(e, el) => el.length && setF("Comprador", compsB[el[0].index])}});
+  const topC = compsB.reduce((a, c) => nB(c) > nB(a) ? c : a, compsB[0]);
+  nota("cB2BComp", compsB.length ? `<b>${esc(corto(topC))}</b> radicó ${nB(topC)} casos (${pc(nB(topC), B.length)} del B2B) con un impacto de ${millones(iB(topC))}. ` +
+    `El impacto económico total B2B es <b>${millones(sb.impacto)}</b>: valor en discusión por ajustes de precio, facturación por encima de lo pactado y cartera retenida.` : "");
+  const aj = meses.map(m => B.filter(x => x.MES === m && x.CATEGORIA === "Ajuste de precios Circular 022").length);
+  chart("cB2BAjuste", {type:"bar", data:{labels:mesL, datasets:[{label:"Solicitudes de ajuste", data:aj, backgroundColor:meses.map(m => m >= "2026-08" ? css("--c2") : css("--c6")), borderRadius:3,
+      datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:700, size:11.5}, formatter: v => `${fmt(v)} · ${pc(v, aj.reduce((a, b) => a + b, 0))}`}}]},
+    options:{layout:{padding:{top:20}}, plugins:{legend:{display:false}}, scales:{y:{grace:"12%"}}}});
+  const antes = aj.slice(0, 2).reduce((a, b) => a + b, 0) / 2, desp = aj.slice(3, 5).reduce((a, b) => a + b, 0) / 2;
+  nota("cB2BAjuste", `La Circular 022 entró en vigencia el <b>19 de agosto de 2026</b> (barras naranjas desde agosto). Las solicitudes de ajuste de tarifa pasaron de <b>${antes.toFixed(1).replace(".", ",")} al mes</b> en junio y julio a <b>${desp.toFixed(1).replace(".", ",")} al mes</b> en septiembre y octubre ` +
+    `(${antes ? "×" + (desp / antes).toFixed(1).replace(".", ",") : "–"}). En total son ${aj.reduce((a, b) => a + b, 0)} casos, ${pc(aj.reduce((a, b) => a + b, 0), B.length)} del B2B.`);
+
+  tablaPqr(B, $("#qPqrB").value.toLowerCase(), $("#soloVencidasB").checked, "#tPqrB", "#pPqrB", "pqrB");
+}
+
+// ---------- PQRS DISPENSACIÓN
+function rDisp(){
+  const cmp = F.Comprador; F.Comprador = ""; const P = filtrarPqr(true); F.Comprador = cmp; const s = stats(P);
+  const meses = [...new Set(D.p.map(x => x.MES))].sort(), mesL = meses.map(m => mesTxt(m).slice(0, 3) + " " + m.slice(2, 4));
+  const Ds = P.filter(x => x.CANAL !== "B2B"), sd = stats(Ds);
+  // ===== DISPENSACIÓN
+  const pend = Ds.filter(x => x.CATEGORIA === "Entrega incompleta (pendientes)"), pendC = pend.filter(x => x.ESTADO.startsWith("Cerrada"));
+  const p48 = pendC.filter(x => x.DIAS_HABILES <= 2).length;
+  $("#kDisp").innerHTML = kpiHtml([
+    ["Casos de dispensación", fmt(Ds.length), "", pc(Ds.length, P.length) + " de todas las PQRS"],
+    ["Pendientes en 48 horas", pc(p48, pendC.length), p1(p48, pendC.length) >= 90 ? "ok" : "bad", `${p48} de ${pendC.length} pendientes cerrados`],
+    ["Acuerdo de servicio", pct(sd.sla), sd.sla >= 90 ? "ok" : sd.sla >= 80 ? "warn" : "bad", "meta 90 %"],
+    ["Oportunidad legal", pct(sd.opor), sd.opor >= 95 ? "ok" : "warn", "≤ 15 días hábiles"],
+    ["Tutelas", fmt(sd.tutelas), sd.tutelas ? "warn" : "ok", pc(sd.tutelas, Ds.length) + " de los casos"],
+    ["Reincidencia", pct(sd.reinc), sd.reinc <= 10 ? "ok" : "bad", "mismo paciente y causa en 30 días"],
+    ["Satisfacción", sd.sat.toFixed(2).replace(".", ",") + " / 5", sd.sat >= 4 ? "ok" : "warn"],
+  ]);
+  const totD = meses.map(m => Ds.filter(x => x.MES === m).length), tutD = meses.map(m => Ds.filter(x => x.MES === m && x.TUTELA).length);
+  chart("cDisMes", {type:"bar", data:{labels:mesL, datasets:[
+      {label:"Casos", data:totD, backgroundColor:css("--c2"), borderRadius:3, datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:700, size:11}, textAlign:"center", formatter: v => `${fmt(v)}\n${pc(v, Ds.length)}`}},
+      {label:"Con tutela", data:tutD, backgroundColor:css("--bad"), borderRadius:3, datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--bad"), font:{weight:600, size:10.5}, textAlign:"center", formatter: (v, c) => `${fmt(v)}\n${pc(v, totD[c.dataIndex])}`}}]},
+    options:{layout:{padding:{top:20}}, plugins:{legend:{position:"bottom"}}, scales:{y:{grace:"10%"}}}});
+  const picoD = meses[totD.indexOf(Math.max(...totD))];
+  nota("cDisMes", Ds.length ? `Se registraron <b>${fmt(Ds.length)} casos de dispensación</b>, en promedio ${(totD.slice(0, 5).reduce((a, b) => a + b, 0) / 5).toFixed(0)} por mes completo. ` +
+    `El pico fue <b>${mesTxt(picoD)}</b> con ${Math.max(...totD)} casos, en plena temporada de desabastecimiento (junio y julio). ${sd.tutelas} casos (${pc(sd.tutelas, Ds.length)}) terminaron en tutela.` : "");
+  const cd = Object.entries(contar(Ds, "CATEGORIA")).sort((a, b) => b[1] - a[1]);
+  hbar("cDisCat", cd, css("--c2"), "Categoria");
+  const pendTot = cd.filter(([k]) => /pendientes|desabastecimiento/.test(k)).reduce((a, e) => a + e[1], 0);
+  nota("cDisCat", cd.length ? `La causa principal es <b>${esc(cd[0][0])}</b> con ${cd[0][1]} casos (${pc(cd[0][1], Ds.length)}). ` +
+    `Sumando pendientes y desabastecimiento son <b>${pendTot} casos (${pc(pendTot, Ds.length)})</b>, el mismo riesgo por el que la Supersalud ha impuesto medidas cautelares a otros gestores.` : "");
+  const ciuD = Object.entries(contar(Ds, "CIUDAD")).sort((a, b) => b[1] - a[1]);
+  chart("cDisCiudad", {type:"bar", data:{labels:ciuD.map(x => x[0]), datasets:[
+      {label:"Casos", data:ciuD.map(x => x[1]), backgroundColor:css("--c2"), datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${fmt(v)} · ${pc(v, Ds.length)}`}},
+      {label:"Tutelas", data:ciuD.map(x => Ds.filter(y => y.CIUDAD === x[0] && y.TUTELA).length), backgroundColor:css("--bad"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--bad"), font:{weight:600, size:11}, formatter: (v, c) => `${fmt(v)} · ${pc(v, ciuD[c.dataIndex][1])} de la ciudad`}}]},
+    options:{indexAxis:"y", layout:{padding:{right:70}}, plugins:{legend:{position:"bottom"}}, scales:{y:{ticks:{autoSkip:false}}},
+      onClick:(e, el) => el.length && setF("Ciudad", ciuD[el[0].index][0])}});
+  nota("cDisCiudad", ciuD.length ? `<b>${esc(ciuD[0][0])}</b> concentra ${ciuD[0][1]} casos (${pc(ciuD[0][1], Ds.length)}), seguida de ${esc((ciuD[1] || ["–"])[0])} con ${(ciuD[1] || [0, 0])[1]} (${pc((ciuD[1] || [0, 0])[1], Ds.length)}). ` +
+    `La barra roja muestra cuántos casos de cada ciudad llegaron a tutela y qué % de los casos de esa ciudad representan.` : "");
+  const rangos = [["≤ 2 días (cumple)", x => x.DIAS_HABILES <= 2], ["3 a 5 días", x => x.DIAS_HABILES >= 3 && x.DIAS_HABILES <= 5], ["6 a 10 días", x => x.DIAS_HABILES >= 6 && x.DIAS_HABILES <= 10], ["> 10 días", x => x.DIAS_HABILES > 10]];
+  const rv = rangos.map(([, f]) => pendC.filter(f).length);
+  chart("cDisPend", {type:"doughnut", data:{labels:rangos.map(r => r[0]), datasets:[{data:rv, backgroundColor:[css("--ok"), css("--warn"), css("--c4"), css("--bad")], datalabels:lblDona()}]},
+    options:{plugins:{legend:{position:"bottom"}, datalabels:{display:true}}}});
+  nota("cDisPend", pendC.length ? `De <b>${pendC.length} pendientes cerrados</b>, solo <b>${p48} (${pc(p48, pendC.length)}) se entregaron en 48 horas</b> como exige la Resolución 1604 de 2013. ` +
+    `${rv[3]} casos (${pc(rv[3], pendC.length)}) tardaron más de 10 días hábiles. Es la meta regulatoria en peor estado.` : "No hay pendientes cerrados en la selección.");
+
+  heat("#tHeatD", Ds);
+  tablaPqr(Ds, $("#qPqrD").value.toLowerCase(), $("#soloVencidasD").checked, "#tPqrD", "#pPqrD", "pqrD");
+}
+
+// ---------- PQRS GESTIÓN (ambos)
 function rPqrs(){
   const P = filtrarPqr(), s = stats(P);
   $("#kPqrs").innerHTML = kpiHtml([
-    ["PQRS", fmt(s.total), "", `${fmt(s.abiertas)} abiertas`], ["Fuera de término", fmt(s.venc), s.venc ? "bad" : "ok"],
+    ["PQRS", fmt(s.total), "", `B2B ${fmt(P.filter(x => x.CANAL === "B2B").length)} · Dispensación ${fmt(P.filter(x => x.CANAL !== "B2B").length)}`], ["Fuera de término", fmt(s.venc), s.venc ? "bad" : "ok"],
     ["Oportunidad legal", pct(s.opor), s.opor >= 95 ? "ok" : "warn"], ["Acuerdo de servicio", pct(s.sla), s.sla >= 90 ? "ok" : s.sla >= 80 ? "warn" : "bad"],
     ["Días hábiles promedio", s.dias.toFixed(1).replace(".", ",")], ["Tutelas", fmt(s.tutelas), s.tutelas ? "warn" : "ok"],
     ["Escaladas a ente", fmt(s.esc), s.esc ? "warn" : "ok"], ["Reincidencia", pct(s.reinc), s.reinc <= 10 ? "ok" : "bad"],
     ["Impacto económico", millones(s.impacto)], ["Satisfacción", s.sat.toFixed(2).replace(".", ",") + " / 5", s.sat >= 4 ? "ok" : "warn"],
   ]);
-  const meses = [...new Set(D.p.map(x => x.MES))].sort(), canales = [...new Set(D.p.map(x => x.CANAL))].sort();
-  chart("cTend", {type:"line", data:{labels:meses, datasets:canales.map((c, i) => ({label:c, borderColor:PAL()[i], backgroundColor:PAL()[i], tension:.3,
-      data:meses.map(m => P.filter(x => x.MES === m && x.CANAL === c).length)}))}, options:{plugins:{legend:{position:"bottom"}}}});
-  const op = meses.map(m => { const c = s.cer.filter(x => x.MES === m); return c.length ? [c.filter(x => x.OPORTUNA_LEGAL === 1).length / c.length * 100, c.filter(x => x.CUMPLE_SLA === 1).length / c.length * 100] : [null, null]; });
-  chart("cOpor", {type:"line", data:{labels:meses, datasets:[
-      {label:"≤ 15 días hábiles", data:op.map(x => x[0]), borderColor:css("--c1"), backgroundColor:css("--c1"), tension:.25},
-      {label:"Acuerdo de servicio", data:op.map(x => x[1]), borderColor:css("--c3"), backgroundColor:css("--c3"), tension:.25},
-      {label:"Meta 90 %", data:meses.map(() => 90), borderColor:css("--accent"), borderDash:[5, 4], pointRadius:0}]},
-    options:{scales:{y:{min:40, max:100}}, plugins:{legend:{position:"bottom"}}}});
-  hbar("cCat", Object.entries(contar(P, "CATEGORIA")).sort((a, b) => b[1] - a[1]), css("--c1"), "Categoria");
-  const sevs = ["Crítica","Alta","Media","Baja"], cs = contar(P, "SEVERIDAD");
-  chart("cSev", {type:"doughnut", data:{labels:sevs, datasets:[{data:sevs.map(x => cs[x] || 0), backgroundColor:[css("--bad"), css("--warn"), css("--c1"), css("--c6")]}]},
-    options:{plugins:{legend:{position:"bottom"}}, onClick:(e, el) => el.length && setF("Severidad", sevs[el[0].index])}});
+  const meses = [...new Set(D.p.map(x => x.MES))].sort(), mesL = meses.map(m => mesTxt(m).slice(0, 3) + " " + m.slice(2, 4));
+  const B = P.filter(x => x.CANAL === "B2B"), Ds = P.filter(x => x.CANAL !== "B2B"), sb = stats(B), sd = stats(Ds);
+  // ===== AMBOS CANALES
+  const slaMes = (A, m) => { const c = A.filter(x => x.MES === m && x.ESTADO.startsWith("Cerrada")); return c.length ? +(c.filter(x => x.CUMPLE_SLA === 1).length / c.length * 100).toFixed(1) : null; };
+  const lblLinea = col => ({display:true, align:"top", offset:4, color: () => css(col), font:{weight:600, size:10.5}, formatter: v => v == null ? "" : pct(v)});
+  chart("cOpor", {type:"line", data:{labels:mesL, datasets:[
+      {label:"B2B comercial", data:meses.map(m => slaMes(B, m)), borderColor:css("--c1"), backgroundColor:css("--c1"), tension:.25, datalabels:lblLinea("--c1")},
+      {label:"Dispensación", data:meses.map(m => slaMes(Ds, m)), borderColor:css("--c2"), backgroundColor:css("--c2"), tension:.25, datalabels:Object.assign(lblLinea("--c2"), {align:"bottom"})},
+      {label:"Meta 90 %", data:meses.map(() => 90), borderColor:css("--muted"), borderDash:[5, 4], pointRadius:0}]},
+    options:{layout:{padding:{top:14}}, scales:{y:{min:40, max:105, ticks:{callback:v => v + " %"}}}, plugins:{legend:{position:"bottom"}}}});
+  nota("cOpor", `Cumplimiento del acuerdo de servicio en el periodo: <b>B2B ${pct(sb.sla)}</b> y <b>dispensación ${pct(sd.sla)}</b>, frente a una meta de 90 %. ` +
+    `Ningún canal alcanza la meta. La oportunidad legal (15 días hábiles) sí es alta: ${pct(s.opor)} en total, porque el plazo interno por severidad es más exigente que el legal.`);
+  const sevs = ["Crítica","Alta","Media","Baja"];
+  chart("cSev", {type:"bar", data:{labels:sevs, datasets:[
+      {label:"B2B comercial", data:sevs.map(v => B.filter(x => x.SEVERIDAD === v).length), backgroundColor:css("--c1"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${v} · ${pc(v, B.length)}`}},
+      {label:"Dispensación", data:sevs.map(v => Ds.filter(x => x.SEVERIDAD === v).length), backgroundColor:css("--c2"), datalabels:{display: c => c.dataset.data[c.dataIndex] > 0, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${v} · ${pc(v, Ds.length)}`}}]},
+    options:{layout:{padding:{top:20}}, plugins:{legend:{position:"bottom"}}, scales:{y:{grace:"12%"}}, onClick:(e, el) => el.length && setF("Severidad", sevs[el[0].index])}});
+  const crit = c => (c === "B" ? B : Ds).filter(x => x.SEVERIDAD === "Crítica").length;
+  nota("cSev", `El % de cada barra es sobre el total de su canal. Los casos <b>críticos</b> pesan ${pc(crit("B"), B.length)} en B2B y <b>${pc(crit("D"), Ds.length)} en dispensación</b>, donde se concentran los riesgos para el paciente (pendientes, desabastecimiento y errores de entrega).`);
   const ce = Object.entries(contar(P, "ENTE_RELACIONADO")).sort((a, b) => b[1] - a[1]);
-  chart("cEnte", {type:"bar", data:{labels:ce.map(x => x[0]), datasets:[{data:ce.map(x => x[1]), backgroundColor:PAL()}]}, options:{plugins:{legend:{display:false}}}});
-  const ab = P.filter(x => !x.ESTADO.startsWith("Cerrada")), buckets = ["0-5 días","6-15 días","16-30 días","> 30 días"], cb = contar(ab, "ENVEJECIMIENTO");
-  chart("cAging", {type:"bar", data:{labels:buckets, datasets:[{data:buckets.map(b => cb[b] || 0), backgroundColor:[css("--ok"), css("--c1"), css("--warn"), css("--bad")]}]}, options:{plugins:{legend:{display:false}}}});
-  hbar("cMed", Object.entries(contar(P, "MEDICAMENTO")).sort((a, b) => b[1] - a[1]).slice(0, 8), css("--c3"));
+  chart("cEnte", {type:"bar", data:{labels:ce.map(x => x[0]), datasets:[{data:ce.map(x => x[1]), backgroundColor:PAL(), datalabels:{display:true, anchor:"end", align:"end", color: () => css("--ink"), font:{weight:600, size:11}, formatter: v => `${v} · ${pc(v, P.length)}`}}]},
+    options:{layout:{padding:{top:20}}, plugins:{legend:{display:false}}, scales:{y:{grace:"12%"}}}});
+  nota("cEnte", ce.length ? `<b>${esc(ce[0][0])}</b> es el ente relacionado con más casos: ${ce[0][1]} (${pc(ce[0][1], P.length)}). ${s.esc} casos (${pc(s.esc, P.length)}) ya fueron escalados a un ente de control.` : "");
+  const ab = P.filter(x => !x.ESTADO.startsWith("Cerrada")), buckets = ["0-5 días","6-15 días","16-30 días","> 30 días"], cbk = contar(ab, "ENVEJECIMIENTO");
+  chart("cAging", {type:"bar", data:{labels:buckets, datasets:[{data:buckets.map(b => cbk[b] || 0), backgroundColor:[css("--ok"), css("--c1"), css("--warn"), css("--bad")], datalabels:lblFin(ab.length)}]},
+    options:{layout:{padding:{top:20}}, plugins:{legend:{display:false}}, scales:{y:{grace:"15%"}}}});
+  const viejos = (cbk["16-30 días"] || 0) + (cbk["> 30 días"] || 0);
+  nota("cAging", ab.length ? `Hay <b>${ab.length} casos abiertos</b> (${ab.filter(x => x.CANAL === "B2B").length} B2B y ${ab.filter(x => x.CANAL !== "B2B").length} de dispensación). ` +
+    `<b>${viejos} (${pc(viejos, ab.length)}) superan los 15 días hábiles</b> y ya están fuera del término legal.` : "No hay casos abiertos.");
   const cm = Object.entries(contar(P, "MEDIO")).sort((a, b) => b[1] - a[1]);
-  chart("cMedio", {type:"doughnut", data:{labels:cm.map(x => x[0]), datasets:[{data:cm.map(x => x[1]), backgroundColor:PAL()}]}, options:{plugins:{legend:{position:"bottom"}}}});
-  // heatmap
-  const ciudades = [...new Set(D.p.map(x => x.CIUDAD))].sort(), cats = [...new Set(D.p.map(x => x.CATEGORIA))].sort();
-  const val = (ci, ca) => P.filter(x => x.CIUDAD === ci && x.CATEGORIA === ca).length;
-  const max = Math.max(1, ...ciudades.flatMap(ci => cats.map(ca => val(ci, ca))));
-  $("#tHeat").innerHTML = `<thead><tr><th>Ciudad</th>${cats.map(c => `<th title="${esc(c)}">${esc(c.length > 18 ? c.slice(0, 17) + "…" : c)}</th>`).join("")}<th>Total</th></tr></thead><tbody>` +
-    ciudades.map(ci => `<tr><td>${esc(ci)}</td>${cats.map(ca => { const n = val(ci, ca), a = n / max;
-      return `<td data-ci="${esc(ci)}" data-ca="${esc(ca)}" style="cursor:pointer;background:color-mix(in srgb, var(--brand) ${Math.round(a * 75)}%, transparent);color:${a > .5 ? "#fff" : "inherit"}">${n || ""}</td>`; }).join("")}
-      <td><b>${P.filter(x => x.CIUDAD === ci).length}</b></td></tr>`).join("") + "</tbody>";
-  document.querySelectorAll("#tHeat td[data-ci]").forEach(td => td.onclick = () => { F.Ciudad = td.dataset.ci; F.Categoria = td.dataset.ca; $("#fCiudad").value = F.Ciudad; $("#fCategoria").value = F.Categoria; page.pqr = 0; render(); });
-  // tabla
-  const q = $("#qPqr").value.toLowerCase(), sv = $("#soloVencidas").checked;
+  chart("cMedio", {type:"doughnut", data:{labels:cm.map(x => x[0]), datasets:[{data:cm.map(x => x[1]), backgroundColor:PAL(), datalabels:lblDona()}]},
+    options:{plugins:{legend:{position:"bottom"}, datalabels:{display:true}}}});
+  nota("cMedio", cm.length ? `<b>${esc(cm[0][0])}</b> es el canal de entrada principal (${pc(cm[0][1], P.length)}), seguido de ${esc((cm[1] || ["–"])[0])} (${pc((cm[1] || [0, 0])[1], P.length)}).` : "");
+  const tm = Object.entries(contar(P, "MEDICAMENTO")).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  hbar("cMed", tm, css("--c3"), null, P.length);
+  nota("cMed", tm.length ? `El % es sobre todas las PQRS de la selección. <b>${esc(tm[0][0])}</b> encabeza con ${tm[0][1]} casos (${pc(tm[0][1], P.length)}); los 8 medicamentos de la lista suman ${pc(tm.reduce((a, e) => a + e[1], 0), P.length)}.` : "");
+  heat("#tHeat", P);
+  tablaPqr(P, $("#qPqr").value.toLowerCase(), $("#soloVencidas").checked, "#tPqr", "#pPqr", "pqr");
+}
+
+function tablaPqr(P, q, sv, sel, pager, key){
   const rows = P.filter(x => (!sv || x.VENCIDA_ABIERTA) && (!q || [x.RADICADO, x.DESCRIPCION, x.MEDICAMENTO, x.PUNTO, x.COMPRADOR, x.SOLICITANTE].join(" ").toLowerCase().includes(q)))
     .sort((a, b) => (b.VENCIDA_ABIERTA - a.VENCIDA_ABIERTA) || (b.FECHA_RADICACION > a.FECHA_RADICACION ? 1 : -1));
   const sevPill = v => `<span class="pill ${v === "Crítica" ? "p-bad" : v === "Alta" ? "p-warn" : "p-ok"}">${v}</span>`;
   const estPill = x => `<span class="pill ${x.VENCIDA_ABIERTA ? "p-bad" : x.ESTADO.startsWith("Cerrada") ? "p-ok" : "p-warn"}">${esc(x.ESTADO)}${x.VENCIDA_ABIERTA ? " · vencida" : ""}</span>`;
-  tabla("#tPqr", "#pPqr", "pqr", rows, ["Radicado","Fecha","Canal","Ciudad","Solicitante / comprador","Categoría","Descripción","Severidad","Días háb.","Estado","Ente"],
-    x => `<td class="nw">${x.RADICADO}</td><td class="nw">${x.FECHA_RADICACION}</td><td>${esc(x.CANAL)}</td><td>${esc(x.CIUDAD)}</td>
+  tabla(sel, pager, key, rows, ["Radicado","Fecha","Canal","Ciudad","Solicitante / comprador","Categoría","Descripción","Severidad","Días háb.","Estado","Ente"],
+    x => `<td class="nw">${x.RADICADO}</td><td class="nw">${x.FECHA_RADICACION}</td><td>${esc(CAN[x.CANAL] || x.CANAL)}</td><td>${esc(x.CIUDAD)}</td>
       <td>${esc(x.CANAL === "B2B" ? corto(x.COMPRADOR) + " · " + x.SOLICITANTE : x.PUNTO + " · " + x.SOLICITANTE)}</td><td>${esc(x.CATEGORIA)}</td>
       <td class="wide">${esc(x.DESCRIPCION)}${x.TUTELA ? ' <span class="pill p-bad">tutela</span>' : ""}${x.REINCIDENTE ? ' <span class="pill p-warn">reincidente</span>' : ""}</td>
       <td>${sevPill(x.SEVERIDAD)}</td><td class="num">${x.DIAS_HABILES} / ${x.DIAS_SLA}</td><td>${estPill(x)}</td><td>${esc(x.ENTE_RELACIONADO)}</td>`);
+}
+function heat(sel, P){
+  const ciudades = [...new Set(P.map(x => x.CIUDAD))].sort(), cats = [...new Set(P.map(x => x.CATEGORIA))].sort();
+  const val = (ci, ca) => P.filter(x => x.CIUDAD === ci && x.CATEGORIA === ca).length;
+  const max = Math.max(1, ...ciudades.flatMap(ci => cats.map(ca => val(ci, ca))));
+  $(sel).innerHTML = `<thead><tr><th>Ciudad</th>${cats.map(c => `<th title="${esc(c)}">${esc(c.length > 18 ? c.slice(0, 17) + "…" : c)}</th>`).join("")}<th>Total</th></tr></thead><tbody>` +
+    ciudades.map(ci => `<tr><td>${esc(ci)}</td>${cats.map(ca => { const n = val(ci, ca), a = n / max;
+      return `<td data-ci="${esc(ci)}" data-ca="${esc(ca)}" style="cursor:pointer;background:color-mix(in srgb, var(--brand) ${Math.round(a * 75)}%, transparent);color:${a > .5 ? "#fff" : "inherit"}">${n ? `${n}<br><small>${pc(n, P.length)}</small>` : ""}</td>`; }).join("")}
+      <td><b>${P.filter(x => x.CIUDAD === ci).length}</b><br><small>${pc(P.filter(x => x.CIUDAD === ci).length, P.length)}</small></td></tr>`).join("") + "</tbody>";
+  document.querySelectorAll(sel + " td[data-ci]").forEach(td => td.onclick = () => { F.Ciudad = td.dataset.ci; F.Categoria = td.dataset.ca; $("#fCiudad").value = F.Ciudad; $("#fCategoria").value = F.Categoria; page.pqr = page.pqrD = 0; render(); });
 }
 
 function tabla(sel, pagerSel, key, rows, head, rowFn, size = 25){
